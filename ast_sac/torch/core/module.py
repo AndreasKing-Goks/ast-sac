@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from sac.torch.utils import pytorch_util as ptu
+from ast_sac.torch.utils import pytorch_util as ptu
 
 class PyTorchModule(nn.Module, metaclass=abc.ABCMeta):
     '''

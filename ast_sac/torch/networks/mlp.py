@@ -2,13 +2,13 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from sac.policies.base import Policy
-from sac.utils.pythonplusplus import identity
-from sac.torch.utils import pytorch_util as ptu
-from sac.torch.core.module import PyTorchModule, eval_np
-from sac.torch.data_management.normalizer import TorchFixedNormalizer
-from sac.torch.networks.normalization import LayerNorm
-from sac.torch.utils.pytorch_util import activation_from_string
+from ast_sac.policies.base import Policy
+from ast_sac.utils.pythonplusplus import identity
+from ast_sac.torch.utils import pytorch_util as ptu
+from ast_sac.torch.core.module import PyTorchModule, eval_np
+from ast_sac.torch.data_management.normalizer import TorchFixedNormalizer
+from ast_sac.torch.networks.normalization import LayerNorm
+from ast_sac.torch.utils.pytorch_util import activation_from_string
 
 class Mlp(PyTorchModule):
     def __init__(

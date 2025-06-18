@@ -1,8 +1,8 @@
 import torch
-import sac.torch.utils.pytorch_util as ptu
+import ast_sac.torch.utils.pytorch_util as ptu
 import numpy as np
 
-from sac.data_management.normalizer import Normalizer, FixedNormalizer
+from ast_sac.data_management.normalizer import Normalizer, FixedNormalizer
 
 class TorchNormalizer(Normalizer):
     '''

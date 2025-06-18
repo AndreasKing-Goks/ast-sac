@@ -4,7 +4,7 @@ Includes self-contained modules. Depend on the pytorch_util
 
 import torch
 import torch.nn as nn
-from sac.torch.utils import pytorch_util as ptu
+from ast_sac.torch.utils import pytorch_util as ptu
 
 class LayerNorm(nn.Module):
     '''

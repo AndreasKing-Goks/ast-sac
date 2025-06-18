@@ -4,8 +4,8 @@ Torch argmax policy
 import numpy as np
 from torch import nn
 
-import sac.torch.utils.pytorch_util as ptu
-from sac.policies.base import Policy
+import ast_sac.torch.utils.pytorch_util as ptu
+from ast_sac.policies.base import Policy
 
 class ArgmaxDiscretePolicy(nn.Module, Policy):
     def __init__(self, qf):

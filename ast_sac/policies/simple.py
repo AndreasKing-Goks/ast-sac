@@ -2,7 +2,7 @@
 Policy that always outputs zero
 '''
 
-from sac.policies.base import Policy
+from ast_sac.policies.base import Policy
 
 class RandomPolicy(Policy):
     def __init__(self, action_space):
