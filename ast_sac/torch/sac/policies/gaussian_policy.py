@@ -21,7 +21,6 @@ from ast_sac.torch.sac.policies.base import (
     MakeDeterministic
 )
 
-
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
 
