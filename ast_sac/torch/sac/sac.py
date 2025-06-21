@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 import torch
 import torch.optim as optim
-from ast_sac.core.loss import LossFunction, LossStatistic
+from ast_sac.core.loss import LossFunction, LossStatistics
 from torch import nn
 
 import ast_sac.torch.utils.pytorch_util as ptu
