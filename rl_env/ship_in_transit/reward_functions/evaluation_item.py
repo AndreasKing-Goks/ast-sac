@@ -1,0 +1,156 @@
+
+import numpy as np
+from rl_env.ship_in_transit.sub_systems.obstacle import PolygonObstacle
+
+def is_reaches_endpoint(route_end, pos, arrival_radius=200):
+    # Unpack
+    [n_test, e_test] = pos
+    [n_route_end, e_route_end] = route_end
+    
+    # Get the relative distance between the ship and the end point
+    relative_dist = np.sqrt((n_test - n_route_end)**2 + (e_test - e_route_end)**2)
+    
+    # Check if the ship arrive at the end point
+    is_reached = relative_dist <= arrival_radius
+    
+    return is_reached
+
+def is_pos_outside_horizon(map_obj:PolygonObstacle, 
+                           pos, 
+                           ship_length):
+    ''' 
+        Checks if the positions are outside the map horizon. 
+        Map horizons are determined by the edge point of the determined route point. 
+        Only works with start to end route points method (Two initial points).
+    '''
+    # Unpack ship position
+    n_pos, e_pos = pos
+        
+    # Get the map boundaries
+    min_north = map_obj.min_north
+    min_east = map_obj.min_east
+    max_north = map_obj.max_north
+    max_east = map_obj.max_east
+        
+    # Get the obstacle margin due to all assets ship length
+    margin = ship_length/2
+            
+    # min_bound and max_bound
+    n_route_bound = [min_north + margin , max_north - margin]
+    e_route_bound = [min_east + margin, max_east - margin]
+            
+    # Check if position is outside bound
+    outside_n = n_pos < n_route_bound[0] or n_pos > n_route_bound[1]
+    outside_e = e_pos < e_route_bound[0] or e_pos > e_route_bound[1]
+        
+    is_outside = outside_n or outside_e
+        
+    return is_outside
+    
+def is_pos_inside_obstacles(map_obj:PolygonObstacle,
+                            pos, 
+                            ship_length):
+    ''' 
+        Checks if the positions is inside any obstacle
+    '''
+    # Unpack ship position
+    n_pos, e_pos = pos
+        
+    # Get the obstacle margin due to all assets ship length
+    # Margin is defined as a square patch enveloping the ships
+    margin = ship_length/2
+        
+    # Get the max reach and min reach of the ship
+    min_north = n_pos - margin
+    min_east = e_pos - margin
+    max_north = n_pos + margin
+    max_east = e_pos + margin
+        
+    # All patch's hard point
+    hard_points = [(min_north, min_east), (min_north, max_east), (max_north, min_east), (max_north, max_east)]
+        
+    is_inside = False
+        
+    for hard_point in hard_points:
+        if map_obj.if_pos_inside_obstacles(hard_point[0], hard_point[1]):
+            is_inside =  True
+      
+    return is_inside
+    
+def is_route_outside_horizon(map_obj:PolygonObstacle,
+                             route):
+    ''' 
+        Checks if the sampled route are outside the map horizon. 
+        Map horizons are determined by the edge point of the determined route point. 
+        Allowed additional margin are default 100 m for North and East boundaries.
+        Only works with start to end route points method (Two initial points).
+    '''
+    # Unpack ship position
+    n_route, e_route = route
+        
+    # Get the map boundaries
+    min_north = map_obj.min_north
+    min_east = map_obj.min_east
+    max_north = map_obj.max_north
+    max_east = map_obj.max_east
+            
+    # min_bound and max_bound
+    n_route_bound = [min_north , max_north]
+    e_route_bound = [min_east, max_east]
+        
+    # Check if position is outside bound
+    outside_n = n_route < n_route_bound[0] or n_route > n_route_bound[1]
+    outside_e = e_route < e_route_bound[0] or e_route > e_route_bound[1]
+        
+    is_outside = outside_n or outside_e
+        
+    return is_outside
+    
+def is_route_inside_obstacles(map_obj:PolygonObstacle,
+                              route):
+    ''' 
+        Checks if the tagged position is inside any obstacle
+    '''
+    is_inside = False
+        
+    if map_obj.if_pos_inside_obstacles(route[0], route[1]):
+        is_inside =  True
+      
+    return is_inside
+
+def is_ship_navigation_failure(e_ct, e_tol=250):
+    ## Ship deviates off the course beyond tolerance
+    is_failed_nav = np.abs(e_ct) > e_tol
+        
+    return is_failed_nav
+    
+def is_collision_imminent(test_pos, obs_pos, safety_distance=500):
+    '''
+        Check if the incoming obstacle ship is too close to the ship under test
+    '''
+    n_test, e_test = test_pos
+    n_obs, e_obs = obs_pos
+    dist_squared = (n_test - n_obs)**2 + (e_test - e_obs)**2
+    
+    is_near_collision = dist_squared < safety_distance**2 
+    
+    return is_near_collision
+    
+def is_ship_collision(test_pos, obs_pos, minimum_ship_distance=50):
+    ''' 
+        If test ship and obstacle ship distance is below some threshold, categorize it as collision
+    '''
+    # Unpack ship position
+    n_test, e_test = test_pos
+    n_obs, e_obs = obs_pos
+    
+    # Compute the ship distance
+    ship_distance =  (n_test - n_obs)**2 + (e_test - e_obs)**2
+        
+    # Collision logic
+    is_collision = False
+        
+    if ship_distance < minimum_ship_distance ** 2:
+        is_collision = True
+        
+    return is_collision

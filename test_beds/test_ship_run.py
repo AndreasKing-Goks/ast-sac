@@ -3,7 +3,7 @@
 # print("ast_sac.__file__:", getattr(ast_sac, "__file__", "No __file__"))
 
 ### IMPORT SIMULATOR ENVIRONMENTS
-from rl_env.ship_in_transit.env import MultiShipRLEnv, ShipAssets
+from rl_env.ship_in_transit.env import MultiShipEnv, ShipAssets
 
 from rl_env.ship_in_transit.sub_systems.ship_model import  ShipConfiguration, EnvironmentConfiguration, SimulationConfiguration, ShipModelAST
 from rl_env.ship_in_transit.sub_systems.ship_engine import MachinerySystemConfiguration, MachineryMode, MachineryModeParams, MachineryModes, SpecificFuelConsumptionBaudouin6M26Dot3, SpecificFuelConsumptionWartila6L26
@@ -22,13 +22,14 @@ from ast_sac.torch.sac.sac import SACTrainer
 from ast_sac.torch.networks.mlp import ConcatMlp
 from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
+from utils.basic_animate import ShipTrajectoryAnimator
 
+### IMPORT TOOLS
 import argparse
-
-from typing import Union, List
-
+from typing import List
 import numpy as np
-
+import pandas as pd
+import os
 import torch
 
 # Argument Parser
@@ -228,7 +229,7 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     time_step=args.time_step,
     initial_shaft_speed_integral_error=114
 )
-test_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ShipTransit_OptiStress\ShipTransit_AST\data\test_ship_route.txt'
+test_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\data\test_ship_route.txt'
 test_heading_controller_gains = HeadingControllerGains(kp=1, kd=90, ki=0.01)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
@@ -312,22 +313,75 @@ time_since_last_ship_drawing = 30
 
 ################################### RL SPACE ###################################
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
-env = MultiShipRLEnv(assets=assets,
+env = MultiShipEnv(assets=assets,
                      map=map,
                      ship_draw=ship_draw,
                      time_since_last_ship_drawing=time_since_last_ship_drawing,
                      args=args)
 
-# Layer size
-M = 256
+states = env.states
 
-policy = TanhGaussianPolicy(
-    obs_dim=env.obs_dim,
-    action_dim=env.action_dim,
-    hidden_sizes=[M, M]
-)
+################################################################################################################################
+################################################################################################################################
+# Place the assets in the simulator by resetting the environment
+env.reset()
 
-eval_policy = MakeDeterministic(policy)
+# Simulator records
+total_numsteps = 0
 
-obs = torch.tensor(env.initial_state)
-print(obs)
+# Set done as False before simulation
+done = False
+
+# Run the simulator unitl it terminates, iteratively
+while not done:
+        
+    ## STEP UP THE SIMULATION
+    next_states, done = env.step()
+    total_numsteps += 1
+            
+    # Set the next state as current state for the next simulator step
+    states = next_states
+    
+ts_results_df = pd.DataFrame().from_dict(test.ship_model.simulation_results)
+os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
+
+save_animation = False
+
+if save_animation:
+    test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
+    obs_route = {'east': obs.auto_pilot.navigate.east, 'north': obs.auto_pilot.navigate.north}
+    waypoint_reached_times = None
+    waypoints = list(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north))
+    map_obj = map
+    radius_of_acceptance = args.radius_of_acceptance
+    timestamps = test.time_list
+    interval = args.time_step * 1000
+    test_drawer=test.ship_model.draw
+    obs_drawer=obs.ship_model.draw
+    test_headings=ts_results_df["yaw angle [deg]"]
+    obs_headings=os_results_df["yaw angle [deg]"]
+    
+    # Do animation
+    animator = ShipTrajectoryAnimator(ts_results_df,
+                                      os_results_df,
+                                      test_route,
+                                      obs_route,
+                                      waypoint_reached_times,
+                                      waypoints,
+                                      map_obj,
+                                      radius_of_acceptance,
+                                      timestamps,
+                                      interval,
+                                      test_drawer,
+                                      obs_drawer,
+                                      test_headings,
+                                      obs_headings)
+
+    # animator.run()
+    ani_ID = 1
+    ani_dir = f"D:\OneDrive - NTNU\PhD\PhD_Projects/ast_sac/animation_{ani_ID}"
+    filename  = "trajectory_real_time.mp4"
+    video_path = os.path.join(ani_dir, filename)
+    fps = 2
+    animator.save(video_path, fps)
+    # animator.run()
