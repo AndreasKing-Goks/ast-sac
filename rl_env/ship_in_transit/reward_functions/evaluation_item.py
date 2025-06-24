@@ -124,7 +124,7 @@ def is_ship_navigation_failure(e_ct, e_tol=500):
         
     return is_failed_nav
     
-def is_collision_imminent(test_pos, obs_pos, safety_distance=500):
+def is_collision_imminent(test_pos, obs_pos, safety_distance=3000):
     '''
         Check if the incoming obstacle ship is too close to the ship under test
     '''

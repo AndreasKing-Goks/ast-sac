@@ -45,7 +45,7 @@ class ShipTrajectoryAnimator:
         self.obs_yaw_rad = np.radians(obs_headings) if obs_headings is not None else None
 
         # Prepare the figure
-        self.fig, self.ax = plt.subplots(figsize=(15, 10))
+        self.fig, self.ax = plt.subplots(figsize=(10, 5.5))
         self.setup_plot()
 
     def setup_plot(self):
@@ -197,7 +197,7 @@ class ShipTrajectoryAnimator:
                 self.test_ship_outline, self.obs_ship_outline,
                 self.time_text)
 
-    def run(self):
+    def run_realtime(self):
         # Create animation
         self.animation = FuncAnimation(
             self.fig,
@@ -210,6 +210,30 @@ class ShipTrajectoryAnimator:
         )
 
         plt.show()
+    
+    def run(self, fps=None):
+        """
+        Run the animation in real time.
+
+        Parameters:
+        - fps: Optional. Frames per second for the live animation. If None, uses default interval.
+        """
+        if fps is not None:
+            self.interval = 1000 / fps  # override interval
+
+        # Create animation
+        self.animation = FuncAnimation(
+            self.fig,
+            self.animate,
+            frames=len(self.timestamps),
+            init_func=self.init_animation,
+            blit=True,
+            interval=self.interval,
+            repeat=False
+        )
+
+    plt.show()
+
         
     def save(self, video_path, fps=2):
         """

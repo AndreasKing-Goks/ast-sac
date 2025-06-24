@@ -223,7 +223,7 @@ map = PolygonObstacle(map_data)
 
 ## Set the throttle and autopilot controllers for the test ship
 test_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=0.05, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=0.005
+    kp_ship_speed=0.05, ki_ship_speed=0.13, kp_shaft_speed=0.1, ki_shaft_speed=0.005
 )
 test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     gains=test_ship_throttle_controller_gains,
@@ -232,7 +232,7 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     initial_shaft_speed_integral_error=114
 )
 test_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\data\test_ship_route.txt'
-test_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.01)
+test_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.00001)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -263,7 +263,7 @@ obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     initial_shaft_speed_integral_error=114
 )
 obs_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ShipTransit_OptiStress\ShipTransit_AST\data\obs_ship_route.txt'
-obs_heading_controller_gains = HeadingControllerGains(kp=1, kd=90, ki=0.01)
+obs_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.00001)
 obs_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -347,9 +347,11 @@ while not done:
 ts_results_df = pd.DataFrame().from_dict(test.ship_model.simulation_results)
 os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
-save_animation = False
+# For animation
+animation = False
+animation = True
 
-if save_animation:
+if animation:
     test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
     obs_route = {'east': obs.auto_pilot.navigate.east, 'north': obs.auto_pilot.navigate.north}
     waypoint_reached_times = None
@@ -384,14 +386,14 @@ if save_animation:
     ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast_sac/animation_{ani_ID}"
     filename  = "trajectory_real_time.mp4"
     video_path = os.path.join(ani_dir, filename)
-    fps = 2
-    animator.save(video_path, fps)
-    # animator.run()
+    fps = 480
+    # animator.save(video_path, fps)
+    animator.run(fps)
 
 ## SHOW PLOT
 # Plot 1: Map plot
 plot_1 = False
-plot_1 = True
+# plot_1 = True
 
 # Plot 2: Status plot
 plot_2 = False
@@ -403,7 +405,7 @@ plot_3 = False
 
 # Create a plot 1 single figure and axis instead of a grid
 if plot_1:
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(10, 5.5))
 
     # Plot 1.1: Ship trajectory with sampled route
     # Test ship
