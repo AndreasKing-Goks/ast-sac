@@ -326,6 +326,7 @@ env = MultiShipEnv(assets=assets,
 states = env.states
 
 ################################################################################################################################
+##################################################### SIMULATION STARTS HERE ###################################################
 ################################################################################################################################
 # Place the assets in the simulator by resetting the environment
 env.reset()
@@ -345,6 +346,8 @@ while not done:
             
     # Set the next state as current state for the next simulator step
     states = next_states
+################################################################################################################################
+################################################################################################################################
 
 # Print last status
 print_termination(termination_cond)
@@ -386,8 +389,8 @@ if animation:
                                       test_headings,
                                       obs_headings)
 
-    ani_ID = 1
-    ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast-sac/animation/animation_{ani_ID}"
+    ani_ID = 3
+    ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast-sac/animation/test/animation_{ani_ID}"
     filename  = "trajectory_real_time.mp4"
     video_path = os.path.join(ani_dir, filename)
     fps = 480
@@ -395,8 +398,8 @@ if animation:
     # Create the output directory if it doesn't exist
     os.makedirs(ani_dir, exist_ok=True)
     
-    # animator.save(video_path, fps)
-    animator.run(fps)
+    animator.save(video_path, fps)
+    # animator.run(fps)
 
 ## SHOW PLOT
 # Plot 1: Map plot
