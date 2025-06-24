@@ -373,7 +373,7 @@ class MultiShipEnv(Env):
         if stop_int_obs:
             self.obs.stop_flag = True 
         
-        return next_states, done
+        return next_states, done, termination_cond
     
     def seed(self, seed=None):
         """Set the random seed for reproducibility"""

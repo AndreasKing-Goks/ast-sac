@@ -10,6 +10,7 @@ from rl_env.ship_in_transit.sub_systems.ship_engine import MachinerySystemConfig
 from rl_env.ship_in_transit.sub_systems.LOS_guidance import LosParameters
 from rl_env.ship_in_transit.sub_systems.obstacle import StaticObstacle, PolygonObstacle
 from rl_env.ship_in_transit.sub_systems.controllers import ThrottleControllerGains, HeadingControllerGains, EngineThrottleFromSpeedSetPoint, HeadingBySampledRouteController
+from rl_env.ship_in_transit.utils.print_termination import print_termination
 
 ### IMPORT FUNCTIONS
 import ast_sac.torch.utils.pytorch_util as ptu
@@ -338,12 +339,15 @@ done = False
 while not done:
         
     ## STEP UP THE SIMULATION
-    next_states, done = env.step()
+    next_states, done, termination_cond = env.step()
     total_numsteps += 1
             
     # Set the next state as current state for the next simulator step
     states = next_states
-    
+
+# Print last status
+print_termination(termination_cond)
+
 ts_results_df = pd.DataFrame().from_dict(test.ship_model.simulation_results)
 os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
@@ -381,12 +385,15 @@ if animation:
                                       test_headings,
                                       obs_headings)
 
-    # animator.run()
     ani_ID = 1
-    ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast_sac/animation_{ani_ID}"
+    ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast-sac/animation/animation_{ani_ID}"
     filename  = "trajectory_real_time.mp4"
     video_path = os.path.join(ani_dir, filename)
     fps = 480
+    
+    # Create the output directory if it doesn't exist
+    os.makedirs(ani_dir, exist_ok=True)
+    
     # animator.save(video_path, fps)
     animator.run(fps)
 
@@ -511,8 +518,8 @@ if plot_2:
     axes[7].set_xlim(left=0)
 
     # Plot 2.5: Power vs Available Power
-    axes[8].plot(ts_results_df['time [s]'], ts_results_df['power me [kw]'], label="Power")
-    axes[8].plot(ts_results_df['time [s]'], ts_results_df['available power me [kw]'], label="Available Power")
+    axes[8].plot(ts_results_df['time [s]'], ts_results_df['power electrical [kw]'], label="Power")
+    axes[8].plot(ts_results_df['time [s]'], ts_results_df['available power electrical [kw]'], label="Available Power")
     axes[8].set_title('Test Ship Power vs Available Power [kw]')
     axes[8].set_xlabel('Time (s)')
     axes[8].set_ylabel('Power (kw)')
@@ -521,8 +528,8 @@ if plot_2:
     axes[8].set_xlim(left=0)
 
     # Plot 3.5: Power vs Available Power
-    axes[9].plot(os_results_df['time [s]'], os_results_df['power me [kw]'], label="Power")
-    axes[9].plot(os_results_df['time [s]'], os_results_df['available power me [kw]'], label="Available Power")
+    axes[9].plot(os_results_df['time [s]'], os_results_df['power electrical [kw]'], label="Power")
+    axes[9].plot(os_results_df['time [s]'], os_results_df['available power electrical [kw]'], label="Available Power")
     axes[9].set_title('Obstacle Ship Power vs Available Power [kw]')
     axes[9].set_xlabel('Time (s)')
     axes[9].set_ylabel('Power (kw)')
