@@ -389,9 +389,9 @@ if animation:
                                       test_headings,
                                       obs_headings)
 
-    ani_ID = 3
+    ani_ID = 1
     ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast-sac/animation/test/animation_{ani_ID}"
-    filename  = "trajectory_real_time.mp4"
+    filename  = "trajectory.mp4"
     video_path = os.path.join(ani_dir, filename)
     fps = 480
     
