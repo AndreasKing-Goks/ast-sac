@@ -36,10 +36,10 @@ def print_termination(termination_cond):
         done_status += '|Obstacle ship suffers navigational failure|'
         
     if is_near_collision:
-        op_status =+ '|Near-collision warning activated!|'
+        op_status += '|Near-collision warning activated!|'
         
     if is_collision:
-        done_status =+ '|SHIP COLLISION!|'
+        done_status += '|SHIP COLLISION!|'
         
     # Print status
     print('Operational status:', op_status)

@@ -39,17 +39,24 @@ class MultiShipEnv(Env):
     multi-ship operation. It handles:
     - One ship under test
     - One or more obstacle ships
+    
+    To turn on collision avoidance on the ship under test:
+    - set collav==True
     """
     def __init__(self, 
                  assets:List[ShipAssets],
                  map: PolygonObstacle,
                  ship_draw:bool,
+                 collav:bool,
                  time_since_last_ship_drawing:float,
                  args):
         super().__init__()
         
         # Store args as attribute
         self.args = args
+        
+        # Set collision avoidance handle
+        self.collav = collav
         
         ## Unpack assets [test, obs]
         self.assets = assets
@@ -183,22 +190,21 @@ class MultiShipEnv(Env):
             
         ## COLLISION AVOIDANCE
         ####################################################################################################
-        collision_risk = evaluation_item.is_collision_imminent(self.states[0:2], self.states[3:5])
-        ####################################################################################################
+        if self.collav:            
+            collision_risk = evaluation_item.is_collision_imminent(self.states[0:2], self.states[3:5])
                 
-        if collision_risk:
-            # Reduce throttle
-            throttle *= 0.5
-            throttle = np.clip(throttle, 0.0, 1.1)
+            if collision_risk:
+                # Reduce throttle
+                throttle *= 0.5
+                throttle = np.clip(throttle, 0.0, 1.1)
 
-            # Add a small rudder bias to steer away (rudder angle in radians)
-            rudder_angle += np.deg2rad(3)                    
-            rudder_angle = np.clip(rudder_angle, 
-                                   -self.test.auto_pilot.heading_controller.max_rudder_angle, 
-                                   self.test.auto_pilot.heading_controller.max_rudder_angle)
-
-            # Optional print for debugging
-            # print("Collision Avoidance Activated")
+                # Add a small rudder bias to steer away (rudder angle in radians)
+                # rudder_angle += np.deg2rad(15) 
+                rudder_angle += np.deg2rad(-15) # This triggers SHIP COLLISION
+                rudder_angle = np.clip(rudder_angle, 
+                                       -self.test.auto_pilot.heading_controller.max_rudder_angle, 
+                                        self.test.auto_pilot.heading_controller.max_rudder_angle)
+        ####################################################################################################
         
         # Update and integrate differential equations for current time step
         self.test.ship_model.store_simulation_data(throttle, 

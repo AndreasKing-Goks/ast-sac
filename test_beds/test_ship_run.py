@@ -319,6 +319,7 @@ time_since_last_ship_drawing = 30
 env = MultiShipEnv(assets=assets,
                      map=map,
                      ship_draw=ship_draw,
+                     collav=True,
                      time_since_last_ship_drawing=time_since_last_ship_drawing,
                      args=args)
 
