@@ -29,6 +29,8 @@ import argparse
 from typing import List
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 import os
 import torch
 
@@ -221,7 +223,7 @@ map = PolygonObstacle(map_data)
 
 ## Set the throttle and autopilot controllers for the test ship
 test_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=7, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=0.005
+    kp_ship_speed=0.05, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=0.005
 )
 test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     gains=test_ship_throttle_controller_gains,
@@ -230,7 +232,7 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     initial_shaft_speed_integral_error=114
 )
 test_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\data\test_ship_route.txt'
-test_heading_controller_gains = HeadingControllerGains(kp=1, kd=90, ki=0.01)
+test_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.01)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -379,9 +381,211 @@ if save_animation:
 
     # animator.run()
     ani_ID = 1
-    ani_dir = f"D:\OneDrive - NTNU\PhD\PhD_Projects/ast_sac/animation_{ani_ID}"
+    ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast_sac/animation_{ani_ID}"
     filename  = "trajectory_real_time.mp4"
     video_path = os.path.join(ani_dir, filename)
     fps = 2
     animator.save(video_path, fps)
     # animator.run()
+
+## SHOW PLOT
+# Plot 1: Map plot
+plot_1 = False
+plot_1 = True
+
+# Plot 2: Status plot
+plot_2 = False
+plot_2 = True
+
+# Plot 3: Position plot
+plot_3 = False
+# plot_3 = True
+
+# Create a plot 1 single figure and axis instead of a grid
+if plot_1:
+    plt.figure(figsize=(15, 10))
+
+    # Plot 1.1: Ship trajectory with sampled route
+    # Test ship
+    plt.plot(ts_results_df['east position [m]'].to_numpy(), ts_results_df['north position [m]'].to_numpy())
+    plt.scatter(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, marker='x', color='blue')  # Waypoints
+    plt.plot(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, linestyle='--', color='blue')  # Line
+    for x, y in zip(test.ship_model.ship_drawings[1], test.ship_model.ship_drawings[0]):
+        plt.plot(x, y, color='blue')
+    # for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
+    #     test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
+    #     plt.gca().add_patch(test_radius_circle)
+    # Obs ship    
+    plt.plot(os_results_df['east position [m]'].to_numpy(), os_results_df['north position [m]'].to_numpy())
+    plt.scatter(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, marker='x', color='red')  # Waypoints
+    plt.plot(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, linestyle='--', color='red')  # Line
+    for x, y in zip(obs.ship_model.ship_drawings[1], obs.ship_model.ship_drawings[0]):
+        plt.plot(x, y, color='red')
+    for i, (east, north) in enumerate(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north)):
+        obs_radius_circle = Circle((east, north), args.radius_of_acceptance, color='red', alpha=0.3, fill=True)
+        plt.gca().add_patch(obs_radius_circle)
+    map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+
+    plt.xlim(0, 20000)
+    plt.ylim(0, 10000)
+    plt.title('Ship Trajectory with the Sampled Route')
+    plt.xlabel('East position (m)')
+    plt.ylabel('North position (m)')
+    plt.gca().set_aspect('equal')
+    plt.grid(color='0.8', linestyle='-', linewidth=0.5)
+
+    # Adjust layout for better spacing
+    plt.tight_layout()
+    
+# Create a No.2 3x4 grid for subplots
+if plot_2:
+    fig_2, axes = plt.subplots(nrows=3, ncols=4, figsize=(15, 10))
+    axes = axes.flatten()  # Flatten the 2D array for easier indexing
+
+    # Plot 2.1: Forward Speed
+    axes[0].plot(ts_results_df['time [s]'], ts_results_df['forward speed [m/s]'])
+    axes[0].set_title('Test Ship Forward Speed [m/s]')
+    axes[0].set_xlabel('Time (s)')
+    axes[0].set_ylabel('Forward Speed (m/s)')
+    axes[0].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[0].set_xlim(left=0)
+
+    # Plot 3.1: Forward Speed
+    axes[1].plot(os_results_df['time [s]'], os_results_df['forward speed [m/s]'])
+    axes[1].set_title('Obstacle Ship Forward Speed [m/s]')
+    axes[1].set_xlabel('Time (s)')
+    axes[1].set_ylabel('Forward Speed (m/s)')
+    axes[1].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[1].set_xlim(left=0)
+
+    # Plot 2.2: Rudder Angle
+    axes[2].plot(ts_results_df['time [s]'], ts_results_df['rudder angle [deg]'])
+    axes[2].set_title('Test Ship Rudder angle [deg]')
+    axes[2].set_xlabel('Time (s)')
+    axes[2].set_ylabel('Rudder angle [deg]')
+    axes[2].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[2].set_xlim(left=0)
+    axes[2].set_ylim(-31,31)
+
+    # Plot 3.2: Rudder Angle
+    axes[3].plot(os_results_df['time [s]'], os_results_df['rudder angle [deg]'])
+    axes[3].set_title('Obstacle Ship Rudder angle [deg]')
+    axes[3].set_xlabel('Time (s)')
+    axes[3].set_ylabel('Rudder angle [deg]')
+    axes[3].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[3].set_xlim(left=0)
+    axes[3].set_ylim(-31,31)
+
+    # Plot 2.3: Cross Track error
+    axes[4].plot(ts_results_df['time [s]'], ts_results_df['cross track error [m]'])
+    axes[4].set_title('Test Ship Cross Track Error [m]')
+    axes[4].set_xlabel('Time (s)')
+    axes[4].set_ylabel('Cross track error (m)')
+    axes[4].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[4].set_xlim(left=0)
+
+    # Plot 3.3: Cross Track error
+    axes[5].plot(os_results_df['time [s]'], os_results_df['cross track error [m]'])
+    axes[5].set_title('Obstacle Ship Cross Track Error [m]')
+    axes[5].set_xlabel('Time (s)')
+    axes[5].set_ylabel('Cross track error (m)')
+    axes[5].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[5].set_xlim(left=0)
+
+    # Plot 2.4: Propeller Shaft Speed
+    axes[6].plot(ts_results_df['time [s]'], ts_results_df['propeller shaft speed [rpm]'])
+    axes[6].set_title('Test Ship Propeller Shaft Speed [rpm]')
+    axes[6].set_xlabel('Time (s)')
+    axes[6].set_ylabel('Propeller Shaft Speed (rpm)')
+    axes[6].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[6].set_xlim(left=0)
+
+    # Plot 3.4: Propeller Shaft Speed
+    axes[7].plot(os_results_df['time [s]'], os_results_df['propeller shaft speed [rpm]'])
+    axes[7].set_title('Obstacle Ship Propeller Shaft Speed [rpm]')
+    axes[7].set_xlabel('Time (s)')
+    axes[7].set_ylabel('Propeller Shaft Speed (rpm)')
+    axes[7].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[7].set_xlim(left=0)
+
+    # Plot 2.5: Power vs Available Power
+    axes[8].plot(ts_results_df['time [s]'], ts_results_df['power me [kw]'], label="Power")
+    axes[8].plot(ts_results_df['time [s]'], ts_results_df['available power me [kw]'], label="Available Power")
+    axes[8].set_title('Test Ship Power vs Available Power [kw]')
+    axes[8].set_xlabel('Time (s)')
+    axes[8].set_ylabel('Power (kw)')
+    axes[8].legend()
+    axes[8].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[8].set_xlim(left=0)
+
+    # Plot 3.5: Power vs Available Power
+    axes[9].plot(os_results_df['time [s]'], os_results_df['power me [kw]'], label="Power")
+    axes[9].plot(os_results_df['time [s]'], os_results_df['available power me [kw]'], label="Available Power")
+    axes[9].set_title('Obstacle Ship Power vs Available Power [kw]')
+    axes[9].set_xlabel('Time (s)')
+    axes[9].set_ylabel('Power (kw)')
+    axes[9].legend()
+    axes[9].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[9].set_xlim(left=0)
+
+    # Plot 2.6: Fuel Consumption
+    axes[10].plot(ts_results_df['time [s]'], ts_results_df['fuel consumption [kg]'])
+    axes[10].set_title('Test Ship Fuel Consumption [kg]')
+    axes[10].set_xlabel('Time (s)')
+    axes[10].set_ylabel('Fuel Consumption (kg)')
+    axes[10].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[10].set_xlim(left=0)
+
+    # Plot 3.6: Fuel Consumption
+    axes[11].plot(os_results_df['time [s]'], os_results_df['fuel consumption [kg]'])
+    axes[11].set_title('Obstacle Ship Fuel Consumption [kg]')
+    axes[11].set_xlabel('Time (s)')
+    axes[11].set_ylabel('Fuel Consumption (kg)')
+    axes[11].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[11].set_xlim(left=0)
+
+    # Adjust layout for better spacing
+    plt.tight_layout()
+
+# Create a No.4 2x2 grid for subplots
+if plot_3:
+    fig_3, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 10))
+    axes = axes.flatten()  # Flatten the 2D array for easier indexing
+
+    # Plot 4.1: Test north position
+    axes[0].plot(ts_results_df['time [s]'], ts_results_df['north position [m]'])
+    axes[0].set_title('Test Ship North Position [m]')
+    axes[0].set_xlabel('Time (s)')
+    axes[0].set_ylabel('Position (m)')
+    axes[0].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[0].set_xlim(left=0)
+
+    # Plot 4.2: Obsacle north position
+    axes[1].plot(os_results_df['time [s]'], os_results_df['north position [m]'])
+    axes[1].set_title('Obstacle Ship North Position [m]')
+    axes[1].set_xlabel('Time (s)')
+    axes[1].set_ylabel('Position (m)')
+    axes[1].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[1].set_xlim(left=0)
+
+    # Plot 4.3: Test east position
+    axes[2].plot(ts_results_df['time [s]'], ts_results_df['east position [m]'])
+    axes[2].set_title('Test Ship East Position [m]')
+    axes[2].set_xlabel('Time (s)')
+    axes[2].set_ylabel('Position (m)')
+    axes[2].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[2].set_xlim(left=0)
+
+    # Plot 4.1: Obsacle east position
+    axes[3].plot(os_results_df['time [s]'], os_results_df['east position [m]'])
+    axes[3].set_title('Obstacle Ship East Position [m]')
+    axes[3].set_xlabel('Time (s)')
+    axes[3].set_ylabel('Position (m)')
+    axes[3].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[3].set_xlim(left=0)
+
+    # Adjust layout for better spacing
+    plt.tight_layout()
+    
+# Show Plot
+plt.show()

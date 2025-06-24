@@ -118,7 +118,7 @@ def is_route_inside_obstacles(map_obj:PolygonObstacle,
       
     return is_inside
 
-def is_ship_navigation_failure(e_ct, e_tol=250):
+def is_ship_navigation_failure(e_ct, e_tol=500):
     ## Ship deviates off the course beyond tolerance
     is_failed_nav = np.abs(e_ct) > e_tol
         
