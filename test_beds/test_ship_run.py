@@ -13,16 +13,16 @@ from rl_env.ship_in_transit.sub_systems.controllers import ThrottleControllerGai
 from rl_env.ship_in_transit.utils.print_termination import print_termination
 
 ### IMPORT FUNCTIONS
-import ast_sac.torch.utils.pytorch_util as ptu
+# import ast_sac.torch.utils.pytorch_util as ptu
 
-from ast_sac.data_management.env_replay_buffer import EnvReplayBuffer
-from ast_sac.launchers.launcher_utils import setup_logger
-from ast_sac.samplers.data_collector.path_collector import MdpPathCollector
-from ast_sac.torch.sac.policies.gaussian_policy import TanhGaussianPolicy, MakeDeterministic
-from ast_sac.torch.sac.sac import SACTrainer
-from ast_sac.torch.networks.mlp import ConcatMlp
-from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
-from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
+# from ast_sac.data_management.env_replay_buffer import EnvReplayBuffer
+# from ast_sac.launchers.launcher_utils import setup_logger
+# from ast_sac.samplers.data_collector.path_collector import MdpPathCollector
+# from ast_sac.torch.sac.policies.gaussian_policy import TanhGaussianPolicy, MakeDeterministic
+# from ast_sac.torch.sac.sac import SACTrainer
+# from ast_sac.torch.networks.mlp import ConcatMlp
+# from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
+# from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
 from utils.basic_animate import ShipTrajectoryAnimator
 
 ### IMPORT TOOLS
@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import os
 import torch
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 # Argument Parser
 parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Args')
@@ -232,7 +233,8 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     time_step=args.time_step,
     initial_shaft_speed_integral_error=114
 )
-test_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\data\test_ship_route.txt'
+
+test_route_name = os.path.join('data', 'test_ship_route.txt')
 test_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.00001)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
@@ -263,7 +265,9 @@ obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     time_step=args.time_step,
     initial_shaft_speed_integral_error=114
 )
-obs_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ShipTransit_OptiStress\ShipTransit_AST\data\obs_ship_route.txt'
+
+custom_obs_route_filename = 'obs_ship_route.txt'
+obs_route_name = test_route_name = os.path.join('data', custom_obs_route_filename) # r'D:\OneDrive - NTNU\PhD\PhD_Projects\ShipTransit_OptiStress\ShipTransit_AST\data\obs_ship_route.txt'
 obs_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.00001)
 obs_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
@@ -279,7 +283,7 @@ obs_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-obs_desired_forward_speed = 8.0
+obs_desired_forward_speed = 8.0 # 8.0
 
 obs_integrator_term = []
 obs_times = []
@@ -356,7 +360,6 @@ ts_results_df = pd.DataFrame().from_dict(test.ship_model.simulation_results)
 os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
 # For animation
-animation = False
 animation = True
 
 if animation:
@@ -390,7 +393,7 @@ if animation:
                                       obs_headings)
 
     ani_ID = 1
-    ani_dir = f"D:/OneDrive - NTNU/PhD/PhD_Projects/ast-sac/animation/test/animation_{ani_ID}"
+    ani_dir = os.path.join('animation', 'sbmpc')
     filename  = "trajectory.mp4"
     video_path = os.path.join(ani_dir, filename)
     fps = 480
@@ -403,7 +406,7 @@ if animation:
 
 ## SHOW PLOT
 # Plot 1: Map plot
-plot_1 = False
+plot_1 = True
 # plot_1 = True
 
 # Plot 2: Status plot
