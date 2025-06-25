@@ -42,13 +42,15 @@ class MultiShipEnv(Env):
     - One or more obstacle ships
     
     To turn on collision avoidance on the ship under test:
-    - set collav==True
+    - set collav=None         : No collision avoidance is implemented
+    - set collav='simple'     : Simple collision avoidance is implemented
+    - set collav='sbmpc'      : SBMPC collision avoidance is implemented
     """
     def __init__(self, 
                  assets:List[ShipAssets],
                  map: PolygonObstacle,
                  ship_draw:bool,
-                 collav:bool,
+                 collav:str,
                  time_since_last_ship_drawing:float,
                  args):
         super().__init__()
@@ -184,7 +186,7 @@ class MultiShipEnv(Env):
 
         ## COLLISION AVOIDANCE - SBMPC
         ####################################################################################################
-        if self.collav:
+        if self.collav == 'sbmpc':
             # Get desired heading and speed for collav
             self.next_wpt, self.prev_wpt = self.test.auto_pilot.navigate.next_wpt(self.test.auto_pilot.next_wpt, north_position, east_position)
             chi_d = self.test.auto_pilot.navigate.los_guidance(self.test.auto_pilot.next_wpt, north_position, east_position)
@@ -232,23 +234,23 @@ class MultiShipEnv(Env):
         )
 
         
-        ## COLLISION AVOIDANCE
-        ####################################################################################################
-        # if self.collav:            
-        #     collision_risk = evaluation_item.is_collision_imminent(self.states[0:2], self.states[3:5])
+        # COLLISION AVOIDANCE
+        ###################################################################################################
+        if self.collav == 'simple':            
+            collision_risk = check_condition.is_collision_imminent(self.states[0:2], self.states[3:5])
                 
-        #     if collision_risk:
-        #         # Reduce throttle
-        #         throttle *= 0.5
-        #         throttle = np.clip(throttle, 0.0, 1.1)
+            if collision_risk:
+                # Reduce throttle
+                throttle *= 0.5
+                throttle = np.clip(throttle, 0.0, 1.1)
 
-        #         # Add a small rudder bias to steer away (rudder angle in radians)
-        #         rudder_angle += np.deg2rad(15) 
-        #         # rudder_angle += np.deg2rad(-15) # This triggers SHIP COLLISION
-        #         rudder_angle = np.clip(rudder_angle, 
-        #                                -self.test.auto_pilot.heading_controller.max_rudder_angle, 
-        #                                 self.test.auto_pilot.heading_controller.max_rudder_angle)
-        ####################################################################################################
+                # Add a small rudder bias to steer away (rudder angle in radians)
+                # rudder_angle += np.deg2rad(15) 
+                rudder_angle += np.deg2rad(-15) # This triggers SHIP COLLISION
+                rudder_angle = np.clip(rudder_angle, 
+                                       -self.test.auto_pilot.heading_controller.max_rudder_angle, 
+                                        self.test.auto_pilot.heading_controller.max_rudder_angle)
+        ###################################################################################################
         
         # Update and integrate differential equations for current time step
         self.test.ship_model.store_simulation_data(throttle, 

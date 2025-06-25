@@ -12,18 +12,19 @@ from rl_env.ship_in_transit.sub_systems.obstacle import StaticObstacle, PolygonO
 from rl_env.ship_in_transit.sub_systems.controllers import ThrottleControllerGains, HeadingControllerGains, EngineThrottleFromSpeedSetPoint, HeadingBySampledRouteController
 from rl_env.ship_in_transit.utils.print_termination import print_termination
 
-### IMPORT FUNCTIONS
-# import ast_sac.torch.utils.pytorch_util as ptu
+## IMPORT FUNCTIONS
+import ast_sac.torch.utils.pytorch_util as ptu
 
-# from ast_sac.data_management.env_replay_buffer import EnvReplayBuffer
-# from ast_sac.launchers.launcher_utils import setup_logger
-# from ast_sac.samplers.data_collector.path_collector import MdpPathCollector
-# from ast_sac.torch.sac.policies.gaussian_policy import TanhGaussianPolicy, MakeDeterministic
-# from ast_sac.torch.sac.sac import SACTrainer
-# from ast_sac.torch.networks.mlp import ConcatMlp
-# from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
-# from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
+from ast_sac.data_management.env_replay_buffer import EnvReplayBuffer
+from ast_sac.launchers.launcher_utils import setup_logger
+from ast_sac.samplers.data_collector.path_collector import MdpPathCollector
+from ast_sac.torch.sac.policies.gaussian_policy import TanhGaussianPolicy, MakeDeterministic
+from ast_sac.torch.sac.sac import SACTrainer
+from ast_sac.torch.networks.mlp import ConcatMlp
+from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
+from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
 from utils.basic_animate import ShipTrajectoryAnimator
+from utils.paths_utils import get_data_path
 
 ### IMPORT TOOLS
 import argparse
@@ -234,7 +235,8 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     initial_shaft_speed_integral_error=114
 )
 
-test_route_name = os.path.join('data', 'test_ship_route.txt')
+test_route_filename = 'test_ship_route.txt'
+test_route_name = get_data_path(test_route_filename)
 test_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.00001)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
@@ -266,8 +268,8 @@ obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     initial_shaft_speed_integral_error=114
 )
 
-custom_obs_route_filename = 'obs_ship_route.txt'
-obs_route_name = test_route_name = os.path.join('data', custom_obs_route_filename) # r'D:\OneDrive - NTNU\PhD\PhD_Projects\ShipTransit_OptiStress\ShipTransit_AST\data\obs_ship_route.txt'
+obs_route_filename = 'obs_ship_route.txt'
+obs_route_name = get_data_path(obs_route_filename)
 obs_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.00001)
 obs_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
@@ -318,12 +320,17 @@ assets: List[ShipAssets] = [test, obs]
 ship_draw = True
 time_since_last_ship_drawing = 30
 
-################################### RL SPACE ###################################
+################################### ENV SPACE ###################################
+# Set Collav Mode
+collav_mode = None
+collav_mode = 'simple'
+collav_mode = 'sbmpc'
+
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
 env = MultiShipEnv(assets=assets,
                      map=map,
                      ship_draw=ship_draw,
-                     collav=True,
+                     collav=collav_mode,
                      time_since_last_ship_drawing=time_since_last_ship_drawing,
                      args=args)
 
@@ -360,7 +367,8 @@ ts_results_df = pd.DataFrame().from_dict(test.ship_model.simulation_results)
 os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
 # For animation
-animation = True
+animation = False
+# animation = True
 
 if animation:
     test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
@@ -406,8 +414,8 @@ if animation:
 
 ## SHOW PLOT
 # Plot 1: Map plot
+plot_1 = False
 plot_1 = True
-# plot_1 = True
 
 # Plot 2: Status plot
 plot_2 = False
