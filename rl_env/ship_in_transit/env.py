@@ -15,6 +15,7 @@ from rl_env.ship_in_transit.sub_systems.controllers import EngineThrottleFromSpe
 from rl_env.ship_in_transit.sub_systems.obstacle import StaticObstacle, PolygonObstacle
 from rl_env.ship_in_transit.reward_functions.evaluation_function import evaluation_function
 from rl_env.ship_in_transit.reward_functions import evaluation_item
+from rl_env.ship_in_transit.sub_systems.sbmpc import SBMPC
 
 from dataclasses import dataclass, field
 from typing import Union, List
@@ -99,6 +100,9 @@ class MultiShipEnv(Env):
         # Ship drawing configuration
         self.ship_draw = ship_draw
         self.time_since_last_ship_drawing = time_since_last_ship_drawing
+
+        # Scenario-Based Model Predictive Controller
+        self.sbmpc = SBMPC(tf=1000, dt=20)
     
     def reset(self):
         ''' 
@@ -175,35 +179,75 @@ class MultiShipEnv(Env):
         heading = self.test.ship_model.yaw_angle
         forward_speed = self.test.ship_model.forward_speed
         
+        # Keep it, even when sbmpc is disabled
+        speed_factor, desired_heading_offset = 1.0, 0.0
+
+        ## COLLISION AVOIDANCE - SBMPC
+        ####################################################################################################
+        if self.collav:
+            # Get desired heading and speed for collav
+            self.next_wpt, self.prev_wpt = self.test.auto_pilot.navigate.next_wpt(self.test.auto_pilot.next_wpt, north_position, east_position)
+            chi_d = self.test.auto_pilot.navigate.los_guidance(self.test.auto_pilot.next_wpt, north_position, east_position)
+            u_d = self.test.desired_forward_speed
+
+            # Get OS state required for SBMPC
+            os_state = np.array([self.assets[0].ship_model.east,            # x
+                                 self.assets[0].ship_model.north,           # y
+                                 -self.assets[0].ship_model.yaw_angle,      # Same reference angle but clockwise positive
+                                 self.assets[0].ship_model.forward_speed,   # u
+                                 self.assets[0].ship_model.sideways_speed,  # v
+                                 self.assets[0].ship_model.yaw_rate         # Unused
+                                ])
+            
+            # Get dynamic obstacles info required for SBMPC
+            do_list = [
+                (i, np.array([asset.ship_model.east, asset.ship_model.north, -asset.ship_model.yaw_angle, asset.ship_model.forward_speed, asset.ship_model.sideways_speed]), None, asset.ship_model.ship_config.length_of_ship, asset.ship_model.ship_config.width_of_ship) for i, asset in enumerate(self.assets[1::]) # first asset is own ship
+            ]
+
+            speed_factor, desired_heading_offset = self.sbmpc.get_optimal_ctrl_offset(
+                    u_d=u_d,
+                    chi_d=-chi_d,
+                    os_state=os_state,
+                    do_list=do_list
+                )
+            
+            # Note: self.sbmpc.is_stephen_useful() -> bool can be used to know whether or not the SBMPC colav algorithm is currently active
+            
+        #################################################################################################### 
+
+
+
         # Find appropriate rudder angle and engine throttle
         rudder_angle = self.test.auto_pilot.rudder_angle_from_sampled_route(
             north_position=north_position,
             east_position=east_position,
-            heading=heading
+            heading=heading,
+            desired_heading_offset=-desired_heading_offset # Negative sign because pos==clockwise in sim
         )
-        
+
         throttle = self.test.throttle_controller.throttle(
-            speed_set_point = self.test.desired_forward_speed,
+            speed_set_point = self.test.desired_forward_speed * speed_factor,
             measured_speed = forward_speed,
             measured_shaft_speed = forward_speed,
         )
-            
+
+        
         ## COLLISION AVOIDANCE
         ####################################################################################################
-        if self.collav:            
-            collision_risk = evaluation_item.is_collision_imminent(self.states[0:2], self.states[3:5])
+        # if self.collav:            
+        #     collision_risk = evaluation_item.is_collision_imminent(self.states[0:2], self.states[3:5])
                 
-            if collision_risk:
-                # Reduce throttle
-                throttle *= 0.5
-                throttle = np.clip(throttle, 0.0, 1.1)
+        #     if collision_risk:
+        #         # Reduce throttle
+        #         throttle *= 0.5
+        #         throttle = np.clip(throttle, 0.0, 1.1)
 
-                # Add a small rudder bias to steer away (rudder angle in radians)
-                # rudder_angle += np.deg2rad(15) 
-                rudder_angle += np.deg2rad(-15) # This triggers SHIP COLLISION
-                rudder_angle = np.clip(rudder_angle, 
-                                       -self.test.auto_pilot.heading_controller.max_rudder_angle, 
-                                        self.test.auto_pilot.heading_controller.max_rudder_angle)
+        #         # Add a small rudder bias to steer away (rudder angle in radians)
+        #         rudder_angle += np.deg2rad(15) 
+        #         # rudder_angle += np.deg2rad(-15) # This triggers SHIP COLLISION
+        #         rudder_angle = np.clip(rudder_angle, 
+        #                                -self.test.auto_pilot.heading_controller.max_rudder_angle, 
+        #                                 self.test.auto_pilot.heading_controller.max_rudder_angle)
         ####################################################################################################
         
         # Update and integrate differential equations for current time step

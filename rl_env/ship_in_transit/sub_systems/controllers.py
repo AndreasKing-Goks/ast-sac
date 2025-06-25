@@ -303,7 +303,7 @@ class HeadingBySampledRouteController:
         self.navigate.east.insert(-1, float(route_shift_e))
         
 
-    def rudder_angle_from_sampled_route(self, north_position, east_position, heading):
+    def rudder_angle_from_sampled_route(self, north_position, east_position, heading, desired_heading_offset=0.0):
         ''' This method finds a suitable rudder angle for the ship to follow
             a predefined route specified in the "navigate"-instantiation of the
             "NavigationSystem"-class.
@@ -311,7 +311,7 @@ class HeadingBySampledRouteController:
         self.next_wpt, self.prev_wpt = self.navigate.next_wpt(self.next_wpt, north_position, east_position)
         self.heading_ref = self.navigate.los_guidance(self.next_wpt, north_position, east_position)
         self.heading_mea = heading
-        return self.heading_controller.rudder_angle_from_heading_setpoint(heading_ref=self.heading_ref, measured_heading=heading)
+        return self.heading_controller.rudder_angle_from_heading_setpoint(heading_ref=self.heading_ref + desired_heading_offset, measured_heading=heading)
     
     ## ADDITIONAL ##
     def if_reach_radius_of_acceptance(self, n_pos, e_pos, r_o_a):
