@@ -1,6 +1,6 @@
 import numpy as np
 from rl_env.ship_in_transit.sub_systems.obstacle import PolygonObstacle
-from rl_env.ship_in_transit.reward_functions import evaluation_item
+from rl_env.ship_in_transit.reward_functions import check_condition
 
 def evaluation_function(states,
                         test_route_end,
@@ -22,45 +22,45 @@ def evaluation_function(states,
         
     ## Do evaluation function
     # Check if ship under test reaches end point
-    test_is_reached = evaluation_item.is_reaches_endpoint(test_route_end, 
+    test_is_reached = check_condition.is_reaches_endpoint(test_route_end, 
                                                           test_pos)
     
     # Check if ship under test goes outside map horizon
-    test_is_outside = evaluation_item.is_pos_outside_horizon(map_obj,
+    test_is_outside = check_condition.is_pos_outside_horizon(map_obj,
                                                              test_pos,
                                                              test_ship_length)
     
     # Check if ship under test hit the ground
-    test_is_grounded = evaluation_item.is_pos_inside_obstacles(map_obj,
+    test_is_grounded = check_condition.is_pos_inside_obstacles(map_obj,
                                                                test_pos,
                                                                test_ship_length)
     
     # Check if ship under test encounters navigation failure
-    test_is_failed_nav = evaluation_item.is_ship_navigation_failure(test_e_ct)
+    test_is_failed_nav = check_condition.is_ship_navigation_failure(test_e_ct)
     
     # Check if ship under test reaches end point
-    obs_is_reached = evaluation_item.is_reaches_endpoint(obs_route_end, 
+    obs_is_reached = check_condition.is_reaches_endpoint(obs_route_end, 
                                                          obs_pos)
     
     # Check if obstacle ship goes outside map horizon
-    obs_is_outside = evaluation_item.is_pos_outside_horizon(map_obj,
+    obs_is_outside = check_condition.is_pos_outside_horizon(map_obj,
                                                             obs_pos,
                                                             obs_ship_length)
     
     # Check if obstacle ship hit the ground
-    obs_is_grounded = evaluation_item.is_pos_inside_obstacles(map_obj,
+    obs_is_grounded = check_condition.is_pos_inside_obstacles(map_obj,
                                                               obs_pos,
                                                               obs_ship_length)
     
     # Check if obstacle ship encounters navigation failure
-    obs_is_failed_nav = evaluation_item.is_ship_navigation_failure(obs_e_ct)
+    obs_is_failed_nav = check_condition.is_ship_navigation_failure(obs_e_ct)
     
     # Check if all ships nearing collision
-    is_near_collision = evaluation_item.is_collision_imminent(test_pos,
+    is_near_collision = check_condition.is_collision_imminent(test_pos,
                                                               obs_pos)
     
     # Check if ship collision happens
-    is_collision = evaluation_item.is_ship_collision(test_pos,
+    is_collision = check_condition.is_ship_collision(test_pos,
                                                      obs_pos)
     
     termination_conditions = [test_is_reached, test_is_outside, test_is_grounded, test_is_failed_nav, 

@@ -398,8 +398,8 @@ if animation:
     # Create the output directory if it doesn't exist
     os.makedirs(ani_dir, exist_ok=True)
     
-    animator.save(video_path, fps)
-    # animator.run(fps)
+    # animator.save(video_path, fps)
+    animator.run(fps)
 
 ## SHOW PLOT
 # Plot 1: Map plot

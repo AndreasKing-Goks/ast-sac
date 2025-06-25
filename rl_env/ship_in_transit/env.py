@@ -14,7 +14,7 @@ from rl_env.ship_in_transit.sub_systems.ship_model import ShipModel, ShipModelAS
 from rl_env.ship_in_transit.sub_systems.controllers import EngineThrottleFromSpeedSetPoint, HeadingByRouteController, HeadingBySampledRouteController
 from rl_env.ship_in_transit.sub_systems.obstacle import StaticObstacle, PolygonObstacle
 from rl_env.ship_in_transit.reward_functions.evaluation_function import evaluation_function
-from rl_env.ship_in_transit.reward_functions import evaluation_item
+from rl_env.ship_in_transit.reward_functions import check_condition
 
 from dataclasses import dataclass, field
 from typing import Union, List
@@ -191,7 +191,7 @@ class MultiShipEnv(Env):
         ## COLLISION AVOIDANCE
         ####################################################################################################
         if self.collav:            
-            collision_risk = evaluation_item.is_collision_imminent(self.states[0:2], self.states[3:5])
+            collision_risk = check_condition.is_collision_imminent(self.states[0:2], self.states[3:5])
                 
             if collision_risk:
                 # Reduce throttle
