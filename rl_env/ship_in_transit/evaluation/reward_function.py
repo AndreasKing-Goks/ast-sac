@@ -1,0 +1,337 @@
+'''
+Reward Functions for AST-SAC
+'''
+
+import numpy as np
+
+from rl_env.reward_designs import (RewardDesign1, 
+                                   RewardDesign2, 
+                                   RewardDesign3, 
+                                   RewardDesign4, 
+                                   RewardDesign5, 
+                                   RewardDesign6)
+from rl_env.ship_in_transit.evaluation.check_condition import (is_reaches_endpoint,
+                                                               is_pos_outside_horizon,
+                                                               is_pos_inside_obstacles,
+                                                               is_ship_navigation_failure,
+                                                               is_route_inside_obstacles,
+                                                               is_route_outside_horizon,
+                                                               is_collision_imminent,
+                                                               is_ship_collision)
+from rl_env.ship_in_transit.utils.compute_distance import (get_distance,
+                                                           get_distance_and_true_encounter_type, 
+                                                           get_distance_and_encounter_type)
+from dataclasses import dataclass, field
+
+@dataclass
+class RewardTracker:
+    ship_collision              : list = field(default_factory=list)
+    test_ship_grounding         : list = field(default_factory=list)
+    test_ship_nav_failure       : list = field(default_factory=list)
+    obs_ship_grounding          : list = field(default_factory=list)
+    obs_ship_nav_failure        : list = field(default_factory=list)
+    from_test_ship              : list = field(default_factory=list)
+    from_obs_ship               : list = field(default_factory=list)
+    total                       : list = field(default_factory=list)
+    
+    def update(self, 
+               r_ship_collision,
+               r_test_ship_grounding,
+               r_test_ship_nav_failure,
+               r_obs_ship_grounding,
+               r_obs_ship_nav_failure,
+               r_total):
+        self.ship_collision.append(r_ship_collision)
+        self.test_ship_grounding.append(r_test_ship_grounding)
+        self.test_ship_nav_failure.append(r_test_ship_nav_failure)
+        self.obs_ship_grounding.append(r_obs_ship_grounding)
+        self.obs_ship_nav_failure.append(r_obs_ship_nav_failure)
+        self.from_test_ship.append(r_test_ship_grounding + r_test_ship_nav_failure)
+        self.from_obs_ship.append(r_obs_ship_grounding + r_obs_ship_nav_failure)
+        self.total.append(r_total)
+        
+def get_total_reward_and_done_flag(env_args, 
+                                   converted_action, 
+                                   reward_tracker:RewardTracker,
+                                   normalize_reward=False, 
+                                   use_relative_bearing = True):
+    ## Unpack env_args
+    assets, map_obj = env_args
+    
+    ## Unpack the ship assets
+    test, obs = assets
+    
+    # Initiate Reward Tracker
+    reward_log = reward_tracker
+    
+    ## Unpack the action
+    new_intermediate_waypoint = converted_action
+    
+    ## Get the ship under test and the obstacle ship position and cross track error
+    test_n_pos       = test.ship_model.north
+    test_e_pos       = test.ship_model.east
+    test_pos         = [test_n_pos, test_e_pos]
+    test_heading     = test.ship_model.yaw_angle
+    test_e_ct        = test.ship_model.simulation_results['cross track error [m]'][-1]
+    test_ship_length = test.ship_model.l_ship
+    
+    obs_n_pos       = obs.ship_model.north
+    obs_e_pos       = obs.ship_model.east
+    obs_pos         = [obs_n_pos, obs_e_pos]
+    obs_heading     = obs.ship_model.yaw_angle
+    obs_e_ct        = test.ship_model.simulation_results['cross track error [m]'][-1]
+    obs_ship_length = obs.ship_model.l_ship
+    
+    ## Compute arguments for the reward functions
+    # Ship under test to obstacle design and collision flag
+    if use_relative_bearing:
+        test_to_obs_distance, encounter_type = get_distance_and_encounter_type(test_pos, 
+                                                                               test_heading, 
+                                                                               obs_pos, 
+                                                                               obs_pos, 
+                                                                               obs_heading)
+    else:
+        test_to_obs_distance, encounter_type = get_distance_and_true_encounter_type(test_pos, 
+                                                                                    test_heading, 
+                                                                                    obs_pos, 
+                                                                                    obs_pos, 
+                                                                                    obs_heading)
+    is_collision =  is_ship_collision(test_pos, obs_pos)    
+    
+    # Ship under test to ground distance and grounding flag
+    test_to_ground_distance = map_obj.obstacle_distance(test_pos[0], test_pos[1])
+    is_test_grounding = is_pos_inside_obstacles(map_obj, test_pos, test_ship_length)
+    
+    # Obstacle ship to ground distance and grounding flag
+    obs_to_ground_distance = map_obj.obstacle_distance(obs_pos[0], obs_pos[1])
+    is_obs_grounding = is_pos_inside_obstacles(map_obj, obs_pos, obs_ship_length)
+    
+    # Get navigation failure flags for both ship under test and obstacle ship
+    is_test_nav_failure = False # Need a new function for this. Now set to False
+    is_obs_nav_failure = is_ship_navigation_failure(obs_e_ct)
+    
+    # Get te false intermediate waypoint sampling
+    is_sampling_failure = is_route_inside_obstacles(new_intermediate_waypoint)
+    
+    # Compute ships collision reward. Get the termination status
+    r_ship_collision, termination_1 = ships_collision_reward(test_to_obs_distance, encounter_type, is_collision)
+    
+    # Compute test ship grounding reward. Get the termination status
+    r_test_ship_grounding, termination_2 = test_ship_grounding_reward(test_to_ground_distance, is_test_grounding)
+    
+    # Compute test ship navigation failure reward. get the termination status
+    r_test_ship_nav_failure, termination_3 = test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure)
+    
+    # Compute obstacle ship grounding reward. Get the termination status
+    r_obs_ship_grounding, termination_4 = obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding)
+    
+    # Compute obstacle ship navigation failure reward. Get the termination status
+    r_obs_ship_nav_failure, termination_5 = obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure)
+    
+    # Evaluate all the non-terminal reward function first
+    current_acc_reward_list = np.array([r_ship_collision, r_test_ship_grounding, 
+                                        r_test_ship_nav_failure, r_obs_ship_grounding, 
+                                        r_obs_ship_nav_failure])
+    if normalize_reward:
+        normalizing_factor = len(current_acc_reward_list)
+    else:
+        normalizing_factor = 1 # Not normalized
+    current_acc_reward = np.sum(current_acc_reward_list) / normalizing_factor
+    
+    # Compute false intermediate waypoint sampling reward. Get the termination status
+    r_obs_ship_IW_sampling_failure, termination_6 = obs_ship_IW_sampling_failure_reward(current_acc_reward, is_sampling_failure)
+    
+    # Get the total reward and the done
+    r_total = r_obs_ship_IW_sampling_failure
+    done_flag = any([termination_1, termination_2, termination_3, termination_4, termination_5, termination_6])
+    
+    # Track the reward evolution
+    reward_log.update(r_ship_collision / normalizing_factor,
+                      r_test_ship_grounding / normalizing_factor,
+                      r_test_ship_nav_failure / normalizing_factor,
+                      r_obs_ship_grounding / normalizing_factor,
+                      r_obs_ship_nav_failure / normalizing_factor,
+                      r_total)
+    
+    return r_total, done_flag
+    
+
+def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision, termination_multiplier=100.0):
+    '''
+    * ships_distance is ALWAYS a positive value
+    The reward design consists of two evaluation functions:
+    - Reward Design 4 for handling encounter reward
+        + The goal is to increase the reward when the both ship is getting closer (within 3 km) 
+          and in a head-on or crossing condition
+    - Another Reward Design 4 for handing overtake reward:
+        + The goal is to still reward the agent because the ship still in proximity, but it decays much 
+          faster (reward = 0 when the ship distance is below 200 m)
+    - When the ship collide, implement the termination multiplier for the terminal reward
+    
+    Note: Reward Design parameter is obtained by self tune process
+    '''
+    # Initiate reward designs, termination status, trigger distance, and initial reward
+    encounter_reward = RewardDesign4(target=0, offset_param=1500000)
+    overtake_reward  = RewardDesign4(target=0, offset_param=5000)
+    termination = False
+    trigger_distance = 3000
+    release_distance = 200
+    reward = 0
+    
+    # Compute reward
+    if test_to_obs_distance < trigger_distance:
+        # If the ships in head-on or side by side condition
+        if encounter_type in ["head-on", "crossing"]:
+            reward = encounter_reward(test_to_obs_distance)
+        
+        # If the ship under test overtake the ships
+        elif encounter_type == "overtake" and (test_to_obs_distance < release_distance):
+            reward = overtake_reward(test_to_obs_distance)
+            
+    # If is_collision, compute terminal reward
+    if is_collision:
+        reward = reward * termination_multiplier
+        termination = True
+            
+    return reward, termination
+
+def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termination_multiplier=50.0):
+    '''
+    * ship_ground_distance is ALWAYS a positive value
+    The reward design is based on Reward Design 4:
+    - The reward is range between [0, 1]
+    - We get a reward closer to 1 when the ship_ground_distance is closer to 0
+    - The greater ship_ground_distance is, the lower the reward
+    - As the ship_ground_distance is greater than 2 km, reward = 0
+    - Terminate the simulation if the obstacle ship experiences grounding
+    
+    Note: Reward Design parameter is obtained by self tune process
+    '''
+    # Initiate reward designs, termination status, clipping distance, and initial reward
+    base_reward = RewardDesign4(target=0, offset_param=750000)
+    termination = False
+    clipping_distance = 2000
+    reward = 0
+    
+    # Compute reward
+    if test_to_ground_distance <= clipping_distance:
+        reward = base_reward(test_to_ground_distance)
+    elif test_to_ground_distance > clipping_distance:
+        reward = 0
+    
+    # If is_grounding, compute terminal reward
+    if is_test_grounding:
+        reward = reward * termination_multiplier
+        termination = True
+
+    return reward, termination
+
+def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold = 1000, termination_multiplier=25.0):
+    '''
+    * Cross track error is ALWAYS a positive value
+    The reward design is based on Reward Design 3:
+    - The reward is range between [0, 1]
+    - We get a reward closer to 1 when the cross track error is closer to 1 km
+    - The greater cross track error is, the higher the reward
+    - Navigation failure happens when the ship failed to reach the next waypoint within a certain time window (TBA)
+    - When navigation failure happens, terminate the simulator
+    
+    Note: Reward Design parameter is obtained by self tune process
+    '''
+    # Initiate cross track error threshold, reward designs, termination status, and initial reward
+    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=150000)
+    termination = False
+    reward = 0
+    
+    # Compute reward
+    reward = base_reward(test_e_ct)
+    
+    # If is_nav_failure
+    if is_test_nav_failure:
+        reward = reward * termination_multiplier
+        termination = True
+    
+    return reward, termination
+
+def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding, termination_multiplier=50.0):
+    '''
+    * ship_ground_distance is ALWAYS a positive value
+    The reward design is based on Reward Design 4:
+    - The reward is range between [-1, 0]
+    - We get a reward closer to -1 when the ship_ground_distance is closer to 0
+    - The greater ship_ground_distance is, the bigger the reward
+    - As the ship_ground_distance is greater than 2 km m, reward = 0
+    - Terminate the simulation if the obstacle ship experiences grounding
+    
+    Note: Reward Design parameter is obtained by self tune process
+    '''
+    # Initiate reward designs, termination status, clipping distance, and initial reward
+    base_reward = RewardDesign4(target=0, offset_param=750000)
+    termination = False
+    clipping_distance = 2000
+    reward = 0
+    
+    # Compute reward (negative for obstacle ship)
+    if obs_to_ground_distance <= clipping_distance:
+        reward = -base_reward(obs_to_ground_distance)
+    elif obs_to_ground_distance > clipping_distance:
+        reward = 0
+    
+    # If is_grounding, compute terminal reward
+    if is_obs_grounding:
+        reward = reward * termination_multiplier
+        termination = True
+
+    return reward, termination
+
+def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 500, termination_multiplier=25.0):
+    '''
+    * Cross track error is ALWAYS a positive value
+    The reward design is based on Reward Design 3:
+    - The reward is range between [-1, 0]
+    - We get a reward closer to -1 when the cross track error is closer to 500 m
+    - The greater cross track error is, the higher the reward
+    - Navigation failure happens when the obstacle ship cross track error goes beyond 500 m
+    - When navigation failure happens, terminate the simulator
+    
+    Note: Reward Design parameter is obtained by self tune process
+    '''
+    # Initiate cross track error threshold, reward designs and termination status
+    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=45000)
+    termination = False
+    
+    # Compute reward
+    reward = -base_reward(obs_e_ct)
+    
+    # If is_nav_failure
+    if is_obs_nav_failure:
+        reward = reward * termination_multiplier
+        termination = True
+    
+    return reward, termination
+
+def obs_ship_IW_sampling_failure_reward(current_acc_reward, is_sampling_failure, termination_multiplier=0.5):
+    '''
+    Compute reward when obstacle ship sample the intermediate waypoint in the terrain.
+    
+    If:
+    - The current accumulated reward is positive, halv the reward as a penalty
+    - The current accumulated reward is negative, inverse-halv (double) the reward as penalty
+    
+    This is done to encourage the agent not to sample on a terrain, but not necessarily diminish its learning effort when
+    when it did a good sampling before (by halving the reward when current accumulated reward is positive). But punish 
+    it when the agent did not perform well beforehand (by multiplyng by two when current accumulated reward is negative)
+    '''
+    # Initiate the reward and termination status
+    reward = current_acc_reward
+    termination = False
+    
+    # Compute terminal reward
+    if is_sampling_failure:
+        if current_acc_reward >= 0:
+            reward = reward * termination_multiplier
+        elif current_acc_reward < 0:
+            reward = reward / termination_multiplier
+        termination = True
+        
+    return reward, termination

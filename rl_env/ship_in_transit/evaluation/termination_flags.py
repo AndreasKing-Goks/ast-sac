@@ -1,13 +1,13 @@
 import numpy as np
 from rl_env.ship_in_transit.sub_systems.obstacle import PolygonObstacle
-from rl_env.ship_in_transit.reward_functions import check_condition
+from rl_env.ship_in_transit.evaluation import check_condition
 
-def evaluation_function(states,
-                        test_route_end,
-                        obs_route_end,
-                        map_obj:PolygonObstacle,
-                        test_ship_length,
-                        obs_ship_length):
+def get_termination_status(states,
+                           test_route_end,
+                           obs_route_end,
+                           map_obj:PolygonObstacle,
+                           test_ship_length,
+                           obs_ship_length):
         
     # Initial termination status
     termination = False
