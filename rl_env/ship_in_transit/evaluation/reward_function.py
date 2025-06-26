@@ -233,7 +233,8 @@ def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold 
     - The reward is range between [0, 1]
     - We get a reward closer to 1 when the cross track error is closer to 1 km
     - The greater cross track error is, the higher the reward
-    - Navigation failure happens when the ship failed to reach the next waypoint within a certain time window (TBA)
+    - Navigation failure happens when the ship failed to reach the next waypoint after traversing for more than
+      (tolerance_coeff * AB_segment_length) distance.
     - When navigation failure happens, terminate the simulator
     
     Note: Reward Design parameter is obtained by self tune process
