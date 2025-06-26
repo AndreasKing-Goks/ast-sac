@@ -190,7 +190,7 @@ ship_in_test_simu_setup = SimulationConfiguration(
     initial_sideways_speed_m_per_s=0,
     initial_yaw_rate_rad_per_s=0,
     integration_step=args.time_step,
-    simulation_time=7200,
+    simulation_time=None,
 )
 test_ship = ShipModelAST(ship_config=ship_config,
                        machinery_config=machinery_config,
@@ -207,7 +207,7 @@ ship_as_obstacle_simu_setup = SimulationConfiguration(
     initial_sideways_speed_m_per_s=0,
     initial_yaw_rate_rad_per_s=0,
     integration_step=args.time_step,
-    simulation_time=7200,
+    simulation_time=None,
 )
 obs_ship = ShipModelAST(ship_config=ship_config,
                        machinery_config=machinery_config,
@@ -252,7 +252,7 @@ test_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-test_desired_forward_speed = 8.0
+test_desired_forward_speed = 6.0
 
 test_integrator_term = []
 test_times = []
@@ -285,7 +285,7 @@ obs_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-obs_desired_forward_speed = 8.0 # 8.0
+obs_desired_forward_speed = 7.0 # 8.0
 
 obs_integrator_term = []
 obs_times = []
@@ -368,7 +368,7 @@ os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
 # For animation
 animation = False
-# animation = True
+animation = True
 
 if animation:
     test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
@@ -415,7 +415,7 @@ if animation:
 ## SHOW PLOT
 # Plot 1: Map plot
 plot_1 = False
-plot_1 = True
+# plot_1 = True
 
 # Plot 2: Status plot
 plot_2 = False
