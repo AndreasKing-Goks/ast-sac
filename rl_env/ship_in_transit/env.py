@@ -17,13 +17,7 @@ from rl_env.ship_in_transit.evaluation.termination_flags import get_termination_
 from rl_env.ship_in_transit.evaluation import check_condition
 from rl_env.ship_in_transit.sub_systems.sbmpc import SBMPC
 
-from rl_env.ship_in_transit.evaluation.reward_function import (RewardTracker,
-                                                               ships_collision_reward,
-                                                               test_ship_grounding_reward,
-                                                               test_ship_nav_failure_reward,
-                                                               obs_ship_grounding_reward,
-                                                               obs_ship_nav_failure_reward,
-                                                               obs_ship_IW_sampling_failure_reward)
+from rl_env.ship_in_transit.evaluation.reward_function import get_total_reward_and_done_flag
 
 from dataclasses import dataclass, field
 from typing import Union, List
@@ -61,7 +55,8 @@ class MultiShipRLEnv(Env):
                  ship_draw:bool,
                  collav:str,
                  time_since_last_ship_drawing:float,
-                 args):
+                 args,
+                 normalize_action=True):
         super().__init__()
         
         # Store args as attribute
@@ -89,11 +84,22 @@ class MultiShipRLEnv(Env):
         )
         self.obs_dim = self.observation_space.shape[0]
         
-        # Define action space [route_point_shift] 
-        self.action_space = Box(
-            low = np.array([-np.pi/6], dtype=np.float32),
-            high = np.array([np.pi/6], dtype=np.float32),
-        )
+        # Define action space [scoping angle] 
+        self.real_low = np.array([-np.pi/6], dtype=np.float32)
+        self.real_high = np.array([np.pi/6], dtype=np.float32)
+        
+        self.normalize_action = normalize_action
+        
+        if self.normalize_action:
+            self.action_space = Box(
+                low = np.array([-1.0], dtype=np.float32),
+                high = np.array([1.0], dtype=np.float32)
+            )
+        else:
+            self.action_space = Box(
+                low = self.real_low,
+                high = self.real_high,
+            )
         self.action_dim = self.action_space.shape[0]
         
         # Define initial state
@@ -114,12 +120,93 @@ class MultiShipRLEnv(Env):
 
         # Scenario-Based Model Predictive Controller
         self.sbmpc = SBMPC(tf=1000, dt=20)
+        
+        # Set the intermediate waypoint sampler parameter
+        self.init_get_intermediate_waypoints()
+    
+    def init_get_intermediate_waypoints(self):
+        # Initiate parameter for intermediate waypoint sampler
+        AB_distance_n = self.obs.auto_pilot.navigate.north[-1] - self.obs.auto_pilot.navigate.north[0]
+        AB_distance_e = self.obs.auto_pilot.navigate.east[-1] - self.obs.auto_pilot.navigate.east[0]
+        
+        self.AB_length = np.sqrt(AB_distance_n ** 2 + AB_distance_e ** 2)
+        self.AB_segment_length       = self.AB_length / self.args.sampling_frequency
+        self.AB_north_segment_length = AB_distance_n / self.args.sampling_frequency
+        self.AB_east_segment_length = AB_distance_e / self.args.sampling_frequency 
+        
+        AB_alpha = np.arctan2(AB_distance_e, AB_distance_n)
+        AB_beta = np.pi/2 - AB_alpha 
+        self.omega = np.pi/2 - AB_beta
+        
+        # Set up recursive variable
+        self.y_s = 0
+        self.x_s = 0
+        self.n_base = self.AB_north_segment_length + self.obs.auto_pilot.navigate.north[0]
+        self.e_base = self.AB_east_segment_length + self.obs.auto_pilot.navigate.east[0]
+        self.sampling_count = 0
+        
+        # Set up the ship travel time and travel distance tracker between each waypoints
+        self.tracker_active = False # Activate tracking only after taking a init_step, deactivate only after reset()
+        self.travel_dist_record= []
+        self.travel_time_record= []
+        self.travel_dist = 0 # Set to 0 after sampling an intermediate waypoint
+        self.travel_time = 0 # Set to 0 after sampling an intermediate waypoint
+    
+    def normalize_action(self, a_real):
+        '''
+        Map real action to normalized [-1,1] space
+        '''
+        return 2.0 * (a_real - self.real_low) / (self.real_high - self.real_low) - 1.0
+    
+    def denormalize_action(self, a_norm):
+        '''
+        Map normalized [-1,1] to real action space
+        '''
+        return (a_norm + 1.0) / 2.0 * (self.real_high - self.real_low) + self.real_low
+    
+    def get_intermediate_waypoints(self, action):
+        '''
+        Take action as input (scoping angle).
+        Convert the action as the next intermediate waypoints.
+        '''
+        # Unpcak the action
+        scoping_angle_norm =  action  # Chi
+        
+        # First denormalized the action
+        scoping_angle = self.denormalize_action(scoping_angle_norm)
+        
+        # Compute n_s and e_s
+        l_s = np.abs(self.AB_segment_length * np.tan(scoping_angle))
+        self.x_s = l_s * np.cos(self.omega)
+        self.y_s = l_s * np.sin(self.omega)
+        
+        # Compute x_base and y_base
+        # Positive sampling angle turn left
+        if scoping_angle > 0:
+            self.x_s *= -1
+        else:
+            self.y_s *= -1
+            
+        # Compute next route coordinate
+        route_coord_n = self.n_base + self.y_s
+        route_coord_e = self.e_base + self.x_s
+        
+        # Update new base for the next route coordinate
+        next_segment_factor = self.sampling_count + 2
+        self.n_base = self.obs.auto_pilot.navigate.north[0] + (self.AB_north_segment_length * next_segment_factor) + self.y_s
+        self.e_base = self.obs.auto_pilot.navigate.east[0] + (self.AB_east_segment_length * next_segment_factor) + self.x_s
+        
+        # Repack into simulation input
+        intermediate_waypoints = [route_coord_n, route_coord_e]
+        
+        return intermediate_waypoints
+    
     
     def reset(self):
         ''' 
             Reset all of the ship environment inside the assets container.
             
-            Immediately call upon init_step() method
+            Immediately call upon init_step() and init_get_intermediate_waypoint() method
             
             Return the initial state
         '''
@@ -147,6 +234,9 @@ class MultiShipRLEnv(Env):
         
         # Place the assets in the simulator
         self.init_step()
+        
+        # Reset the intermediate waypoint converter
+        self.init_get_intermediate_waypoints()
         
         return self.initial_states
     
@@ -179,6 +269,12 @@ class MultiShipRLEnv(Env):
             # Step
             ship.ship_model.update_differentials(engine_throttle=throttle, rudder_angle=rudder_angle)
             ship.ship_model.integrate_differentials()
+            
+            # Progress time variable to the next time step
+            ship.ship_model.int.next_time()
+            
+        # Activate travel distance and travel time tracker after placing the assets in the simulator
+        self.tracker_active = True
     
     def test_step(self):
         ''' 
@@ -268,6 +364,9 @@ class MultiShipRLEnv(Env):
         self.test.integrator_term.append(self.test.auto_pilot.navigate.e_ct_int)
         self.test.time_list.append(self.test.ship_model.int.time)
         
+        # Step up the simulator
+        self.test.ship_model.int.next_time()
+        
         # Get observations
         pos = [self.test.ship_model.north, self.test.ship_model.east, self.test.ship_model.yaw_angle]
         los_ct_error = self.test.ship_model.simulation_results['cross track error [m]'][-1]
@@ -277,13 +376,10 @@ class MultiShipRLEnv(Env):
                       self.ensure_scalar(pos[1]),
                       self.ensure_scalar(los_ct_error),]
         
-        # Step up the simulator
-        self.test.ship_model.int.next_time()
-        
         return next_states
     
     def obs_step(self,
-                 intermediate_waypoints=None,
+                 action=None,
                  do_IW_sample=False):
         ''' 
             The method is used for stepping up the simulator for the obstacle ship.
@@ -321,10 +417,24 @@ class MultiShipRLEnv(Env):
         
             return next_states
         
-        if do_IW_sample and intermediate_waypoints:
+        if do_IW_sample and action:
+            # Update the sampling counter
+            self.sampling_count += 1
+            
+            # Convert action into intermediate waypoints
+            intermediate_waypoints = self.get_intermediate_waypoints(action)
+            
             # Update intermediate waypoint to the LOS guidance controller
             self.obs.auto_pilot.update_route(intermediate_waypoints)
-        
+
+            # Append the recorded travel time and travel distance to the list
+            self.travel_dist_record.append(self.travel_dist)
+            self.travel_time_record.append(self.travel_time)
+            
+            # Reset the travel time and travel distance tracker
+            self.travel_dist = 0
+            self.travel_time = 0
+
         # Measure ship position and speed
         north_position = self.obs.ship_model.north
         east_position = self.obs.ship_model.east
@@ -355,6 +465,9 @@ class MultiShipRLEnv(Env):
         self.obs.integrator_term.append(self.obs.auto_pilot.navigate.e_ct_int)
         self.obs.time_list.append(self.obs.ship_model.int.time)
         
+        # Step up the simulator
+        self.obs.ship_model.int.next_time()
+        
         # Compute reward
         pos = [self.obs.ship_model.north, self.obs.ship_model.east, self.obs.ship_model.yaw_angle]
         los_ct_error = self.obs.ship_model.simulation_results['cross track error [m]'][-1]
@@ -365,21 +478,31 @@ class MultiShipRLEnv(Env):
                       self.ensure_scalar(pos[2]),
                       self.ensure_scalar(forward_speed),
                       self.ensure_scalar(los_ct_error),]
-
-        # Step up the simulator
-        self.obs.ship_model.int.next_time()
+        
+        # Track travel time and distance between intermediate waypoint sampling
+        if self.tracker_active:
+            # Increment the travel distance
+            travel_dist_north = self.obs.ship_model.simulation_results['north position [m]'][-1] - self.obs.ship_model.simulation_results['north position [m]'][-2]
+            travel_dist_east = self.obs.ship_model.simulation_results['east position [m]'][-1] - self.obs.ship_model.simulation_results['east position [m]'][-2]
+            self.travel_dist += np.sqrt(travel_dist_north**2 + travel_dist_east**2)
+            
+            # Increment the travel tim
+            self.travel_time += self.obs.ship_model.int.dt
         
         return next_states
     
-    def step(self):
+    def step(self,  action):
         ''' The method is used for stepping up the simulator for all the reinforcement
             learning assets
         '''
+        # Unpack the action
+        intermediate_waypoints_norm = action
+        
         # Do test ship step
         test_next_state = self.test_step()
         
         # Do obstacle ship step
-        obs_next_state = self.obs_step()
+        obs_next_state = self.obs_step(action)
         
         # Apply ship drawing (set as optional function) after stepping
         if self.ship_draw:
@@ -405,42 +528,13 @@ class MultiShipRLEnv(Env):
         self.states = next_states 
         
         # Arguments for evaluation function
-        test_route_end   = [self.test.auto_pilot.navigate.north[-1], self.test.auto_pilot.navigate.east[-1]]
-        obs_route_end    = [self.obs.auto_pilot.navigate.north[-1], self.obs.auto_pilot.navigate.east[-1]]
-        map_obj          = self.map
-        test_ship_length = self.test.ship_model.l_ship
-        obs_ship_length  = self.obs.ship_model.l_ship
+        env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
+        intermediate_waypoints = self.denormalize_action(intermediate_waypoints_norm) # Denormalized normalized action
         
-        # Evaluate the current simulator states
-        termination_cond = get_termination_status(next_states,
-                                                  test_route_end,
-                                                  obs_route_end,
-                                                  map_obj,
-                                                  test_ship_length,
-                                                  obs_ship_length)
+        # Get the reward, and the done_flag
+        reward, done = get_total_reward_and_done_flag(env_args, intermediate_waypoints)
         
-        # Unpack the termination condition
-        test_termination_cond = termination_cond[0:4]
-        join_termination_cond = termination_cond[4:6]
-        obs_termination_cond  = termination_cond[6:10]
-        
-        test_is_reached, test_is_outside, test_is_grounded, test_is_failed_nav = test_termination_cond
-        is_near_collision, is_collision = join_termination_cond
-        obs_is_reached, obs_is_outside, obs_is_grounded, obs_is_failed_nav = obs_termination_cond
-        
-        # Set the termination condition
-        done = test_is_reached or test_is_outside or test_is_grounded or test_is_failed_nav or is_collision \
-            or obs_is_grounded or obs_is_failed_nav
-        
-        # Set the flag to stop integrating obstacle ship dynamics when
-        # - obstacle ship reaches its destination
-        # - obstacle ship exits the map
-        stop_int_obs = obs_is_outside and obs_is_reached
-        
-        if stop_int_obs:
-            self.obs.stop_flag = True 
-        
-        return next_states, done, termination_cond
+        return next_states, reward, done
     
     def seed(self, seed=None):
         """Set the random seed for reproducibility"""
@@ -586,6 +680,9 @@ class MultiShipEnv(Env):
             # Step
             ship.ship_model.update_differentials(engine_throttle=throttle, rudder_angle=rudder_angle)
             ship.ship_model.integrate_differentials()
+            
+            # Progress time variable to the next time step
+            ship.ship_model.int.next_time()
     
     def test_step(self):
         ''' 
@@ -675,6 +772,9 @@ class MultiShipEnv(Env):
         self.test.integrator_term.append(self.test.auto_pilot.navigate.e_ct_int)
         self.test.time_list.append(self.test.ship_model.int.time)
         
+        # Step up the simulator
+        self.test.ship_model.int.next_time()
+        
         # Get observations
         pos = [self.test.ship_model.north, self.test.ship_model.east, self.test.ship_model.yaw_angle]
         los_ct_error = self.test.ship_model.simulation_results['cross track error [m]'][-1]
@@ -683,9 +783,6 @@ class MultiShipEnv(Env):
         next_states = [self.ensure_scalar(pos[0]),
                       self.ensure_scalar(pos[1]),
                       self.ensure_scalar(los_ct_error),]
-        
-        # Step up the simulator
-        self.test.ship_model.int.next_time()
         
         return next_states
     
@@ -752,6 +849,9 @@ class MultiShipEnv(Env):
         self.obs.integrator_term.append(self.obs.auto_pilot.navigate.e_ct_int)
         self.obs.time_list.append(self.obs.ship_model.int.time)
         
+        # Step up the simulator
+        self.obs.ship_model.int.next_time()
+        
         # Compute reward
         pos = [self.obs.ship_model.north, self.obs.ship_model.east, self.obs.ship_model.yaw_angle]
         los_ct_error = self.obs.ship_model.simulation_results['cross track error [m]'][-1]
@@ -762,9 +862,6 @@ class MultiShipEnv(Env):
                       self.ensure_scalar(pos[2]),
                       self.ensure_scalar(forward_speed),
                       self.ensure_scalar(los_ct_error),]
-
-        # Step up the simulator
-        self.obs.ship_model.int.next_time()
         
         return next_states
     

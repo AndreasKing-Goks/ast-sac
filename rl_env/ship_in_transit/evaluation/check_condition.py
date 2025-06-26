@@ -154,3 +154,23 @@ def is_ship_collision(test_pos, obs_pos, minimum_ship_distance=50):
         is_collision = True
         
     return is_collision
+
+def is_sample_travel_dist_too_far(travel_dist, traj_segment_length, distance_factor=2):
+    '''
+        If the obstacle ship travel distance is bigger than traj_segment_length * distance_factor
+        before it even manage to arrive at te next Radius of Accpetance, assume as navigational failure
+        
+        - traj_segment_length is defined as the length of start-to-end straight trajectory of an obstacle
+          ship divided by the maximal intermediate waypoint sampling frequency.
+    '''
+    is_too_far = travel_dist > traj_segment_length * distance_factor
+    return is_too_far
+
+def is_sample_travel_time_too_long(travel_time, time_limit=np.inf):
+    '''
+        If the obstacle ship failed to reach the next Radius of Acceptance before the time limit, assume
+        as navigational failure. However, due to the difficult time limit assumption time limit is defaulted
+        as a positive infinite integer
+    '''
+    is_too_long = travel_time > time_limit
+    return is_too_long

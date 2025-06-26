@@ -17,7 +17,9 @@ from rl_env.ship_in_transit.evaluation.check_condition import (is_reaches_endpoi
                                                                is_route_inside_obstacles,
                                                                is_route_outside_horizon,
                                                                is_collision_imminent,
-                                                               is_ship_collision)
+                                                               is_ship_collision,
+                                                               is_sample_travel_dist_too_far,
+                                                               is_sample_travel_time_too_long)
 from rl_env.ship_in_transit.utils.compute_distance import (get_distance,
                                                            get_distance_and_true_encounter_type, 
                                                            get_distance_and_encounter_type)
@@ -51,21 +53,18 @@ class RewardTracker:
         self.total.append(r_total)
         
 def get_total_reward_and_done_flag(env_args, 
-                                   converted_action, 
+                                   intermediate_waypoints, 
                                    reward_tracker:RewardTracker,
                                    normalize_reward=False, 
                                    use_relative_bearing = True):
     ## Unpack env_args
-    assets, map_obj = env_args
+    assets, map_obj, travel_dist, traj_segment_length, travel_time = env_args
     
     ## Unpack the ship assets
     test, obs = assets
     
     # Initiate Reward Tracker
     reward_log = reward_tracker
-    
-    ## Unpack the action
-    new_intermediate_waypoint = converted_action
     
     ## Get the ship under test and the obstacle ship position and cross track error
     test_n_pos       = test.ship_model.north
@@ -82,7 +81,7 @@ def get_total_reward_and_done_flag(env_args,
     obs_e_ct        = test.ship_model.simulation_results['cross track error [m]'][-1]
     obs_ship_length = obs.ship_model.l_ship
     
-    ## Compute arguments for the reward functions
+    ## COMPUTE ARGUMENTS FOR THE REWARD FUNCTIONS
     # Ship under test to obstacle design and collision flag
     if use_relative_bearing:
         test_to_obs_distance, encounter_type = get_distance_and_encounter_type(test_pos, 
@@ -107,11 +106,13 @@ def get_total_reward_and_done_flag(env_args,
     is_obs_grounding = is_pos_inside_obstacles(map_obj, obs_pos, obs_ship_length)
     
     # Get navigation failure flags for both ship under test and obstacle ship
-    is_test_nav_failure = False # Need a new function for this. Now set to False
+    is_test_nav_failure = any([is_sample_travel_time_too_long(travel_dist, traj_segment_length),
+                               is_sample_travel_time_too_long(travel_time)])
     is_obs_nav_failure = is_ship_navigation_failure(obs_e_ct)
     
     # Get te false intermediate waypoint sampling
-    is_sampling_failure = is_route_inside_obstacles(new_intermediate_waypoint)
+    is_sampling_failure = any([is_route_inside_obstacles(intermediate_waypoints),
+                               is_route_outside_horizon(map_obj, intermediate_waypoints)])
     
     # Compute ships collision reward. Get the termination status
     r_ship_collision, termination_1 = ships_collision_reward(test_to_obs_distance, encounter_type, is_collision)
@@ -141,9 +142,29 @@ def get_total_reward_and_done_flag(env_args,
     # Compute false intermediate waypoint sampling reward. Get the termination status
     r_obs_ship_IW_sampling_failure, termination_6 = obs_ship_IW_sampling_failure_reward(current_acc_reward, is_sampling_failure)
     
-    # Get the total reward and the done
+    # GET THE TOTAL REWARD FOR ONE STEP
     r_total = r_obs_ship_IW_sampling_failure
-    done_flag = any([termination_1, termination_2, termination_3, termination_4, termination_5, termination_6])
+    
+    ## GET THE TERMINATION AND STOP OBSTACLE FLAG FOR NON-REWARD EVALUATION FUNCTION
+    # Compute the necessary argument
+    test_route_end   = [test.auto_pilot.navigate.north[-1], test.auto_pilot.navigate.east[-1]]
+    obs_route_end    = [obs.auto_pilot.navigate.north[-1], obs.auto_pilot.navigate.east[-1]]
+    
+    # Get the termination status
+    termination_7 = is_reaches_endpoint(test_route_end, test_pos)
+    termination_8 = is_pos_outside_horizon(map_obj, test_pos, test_ship_length)
+    
+    termination_9 = is_reaches_endpoint(obs_route_end, obs_pos)
+    termination_10 = is_pos_outside_horizon(map_obj, obs_pos, obs_ship_length)
+    
+    ## CHECK DONE AND STOP_OBS FLAG
+    done_flag = any([termination_1, termination_2, termination_3, termination_4, 
+                     termination_5, termination_6, termination_7, termination_8 ]) # Flags required to turn off the simulator
+    stop_int_obs = any([termination_9, termination_10])
+    
+    # Required to stop obstacle ship integration
+    if stop_int_obs:
+        obs.stop_flag = True
     
     # Track the reward evolution
     reward_log.update(r_ship_collision / normalizing_factor,
