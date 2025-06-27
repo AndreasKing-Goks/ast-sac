@@ -105,7 +105,7 @@ class MultiShipRLEnv(Env):
         # Define initial state
         self.initial_states = np.array([self.test.ship_model.north, self.test.ship_model.east, 0.0,
                                        self.obs.ship_model.north, self.obs.ship_model.east, 
-                                       self.obs.ship_model.yaw_angle, 0.0, self.obs.ship_model.init_forward_speed], dtype=np.float32)
+                                       self.obs.ship_model.yaw_angle, 0.0, self.obs.ship_model.forward_speed], dtype=np.float32)
         self.states = self.initial_states
         
         # Define next state
@@ -600,7 +600,7 @@ class MultiShipEnv(Env):
         # Define initial state
         self.initial_states = np.array([self.test.ship_model.north, self.test.ship_model.east, 0.0,
                                        self.obs.ship_model.north, self.obs.ship_model.east, 
-                                       self.obs.ship_model.yaw_angle, 0.0, self.obs.ship_model.init_forward_speed], dtype=np.float32)
+                                       self.obs.ship_model.yaw_angle, 0.0, self.obs.ship_model.forward_speed], dtype=np.float32)
         self.states = self.initial_states
         
         # Define next state

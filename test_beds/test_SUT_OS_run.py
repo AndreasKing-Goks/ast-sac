@@ -77,7 +77,7 @@ parser.add_argument('--cuda', action="store_true", default=True,
                     help='run on CUDA (default: False)')
 
 # Timesteps and episode parameters
-parser.add_argument('--time_step', type=int, default=0.5, metavar='N',
+parser.add_argument('--time_step', type=int, default=2, metavar='N',
                     help='time step size in second for ship transit simulator (default: 0.5)')
 parser.add_argument('--num_steps', type=int, default=100, metavar='N',
                     help='maximum number of steps across all episodes (default: 100000)')
@@ -252,7 +252,7 @@ test_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-test_desired_forward_speed = 6.0
+test_desired_forward_speed = 8.0
 
 test_integrator_term = []
 test_times = []
@@ -285,7 +285,7 @@ obs_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-obs_desired_forward_speed = 7.0 # 8.0
+obs_desired_forward_speed = 8.0 # 8.0
 
 obs_integrator_term = []
 obs_times = []
@@ -324,7 +324,7 @@ time_since_last_ship_drawing = 30
 # Set Collav Mode
 collav_mode = None
 collav_mode = 'simple'
-collav_mode = 'sbmpc'
+# collav_mode = 'sbmpc'
 
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
 env = MultiShipEnv(assets=assets,

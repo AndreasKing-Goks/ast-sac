@@ -2,7 +2,7 @@
 This module provides classes to construct the ship machinery sistem to simulate.
 Ship machinery includes the type of engine and diesel generators used.
 """
-
+import copy
 
 import numpy as np
 from typing import List, NamedTuple, Union
@@ -222,6 +222,9 @@ class BaseMachineryModel:
             self.load_perc_hsg = []
             self.power_total = []
             self.power_prop = []
+        
+        # # Record of the initial parameters
+        # self.record_initial_parameters()
 
     def update_available_propulsion_power(self):
         if not self.machinery_modes:
@@ -291,6 +294,46 @@ class BaseMachineryModel:
         self.fuel_cons = self.fuel_cons + (rate_me + rate_electrical) * self.int.dt
         return rate_me, rate_electrical, self.fuel_cons_me, self.fuel_cons_electrical, self.fuel_cons
     
+    def record_initial_parameters(self):
+        ''' 
+        Record internal states for later reset. 
+        '''
+        self._initial_state = {
+            'hotel_load': copy.deepcopy(self.hotel_load) if hasattr(self, 'hotel_load') else None,
+            'mode': copy.deepcopy(self.mode) if hasattr(self, 'mode') else None,
+            'fuel_cons_me': self.fuel_cons_me if hasattr(self, 'fuel_cons_me') else 0.0,
+            'fuel_cons_electrical': self.fuel_cons_electrical if hasattr(self, 'fuel_cons_electrical') else 0.0,
+            'fuel_cons': self.fuel_cons if hasattr(self, 'fuel_cons') else 0.0,
+            'power_me': copy.deepcopy(self.power_me) if hasattr(self, 'power_me') else [],
+            'power_hsg': copy.deepcopy(self.power_hsg) if hasattr(self, 'power_hsg') else [],
+            'me_rated': copy.deepcopy(self.me_rated) if hasattr(self, 'me_rated') else [],
+            'hsg_rated': copy.deepcopy(self.hsg_rated) if hasattr(self, 'hsg_rated') else [],
+            'load_hist': copy.deepcopy(self.load_hist) if hasattr(self, 'load_hist') else [],
+            'fuel_rate_me': copy.deepcopy(self.fuel_rate_me) if hasattr(self, 'fuel_rate_me') else [],
+            'fuel_rate_hsg': copy.deepcopy(self.fuel_rate_hsg) if hasattr(self, 'fuel_rate_hsg') else [],
+            'fuel_me': copy.deepcopy(self.fuel_me) if hasattr(self, 'fuel_me') else [],
+            'fuel_hsg': copy.deepcopy(self.fuel_hsg) if hasattr(self, 'fuel_hsg') else [],
+            'fuel': copy.deepcopy(self.fuel) if hasattr(self, 'fuel') else [],
+            'fuel_rate': copy.deepcopy(self.fuel_rate) if hasattr(self, 'fuel_rate') else [],
+            'load_perc_me': copy.deepcopy(self.load_perc_me) if hasattr(self, 'load_perc_me') else [],
+            'load_perc_hsg': copy.deepcopy(self.load_perc_hsg) if hasattr(self, 'load_perc_hsg') else [],
+            'power_total': copy.deepcopy(self.power_total) if hasattr(self, 'power_total') else [],
+            'power_prop': copy.deepcopy(self.power_prop) if hasattr(self, 'power_prop') else [],
+        }
+        
+    def reset(self):
+        ''' 
+        Reset machinery internal states using the recorded snapshot. 
+        '''
+        for key, value in self._initial_state.items():
+            setattr(self, key, copy.deepcopy(value))
+
+        # Reset integrator explicitly
+        self.int = EulerInt()
+        self.int.set_dt(self.int.dt)  # reuse current timestep
+
+
+    
 ###################################################################################################################
 ######################## DESCENDANT CLASS BASED ON PARENT CLASS "BaseMachineryModel" ##############################
 ###################################################################################################################
@@ -328,8 +371,9 @@ class ShipMachineryModel(BaseMachineryModel):
         self.d_omega = 0
 
         # Set up integration
+        self.time_step = time_step
         self.int = EulerInt()  # Instantiate the Euler integrator
-        self.int.set_dt(time_step)
+        self.int.set_dt(self.time_step)
 
         self.specific_fuel_coeffs_for_main_engine = FuelConsumptionCoefficients(a=128.89, b=-168.93, c=246.76)
         self.specific_fuel_coeffs_for_dg = FuelConsumptionCoefficients(a=180.71, b=-289.90, c=324.90)
@@ -351,6 +395,10 @@ class ShipMachineryModel(BaseMachineryModel):
         self.load_perc_hsg = []
         self.power_total = []
         self.power_prop = []
+        
+        # Record of the initial parameters after everything is initialized
+        super().record_initial_parameters()
+        self.record_initial_parameters()
 
     def shaft_eq(self, torque_main_engine, torque_hsg):
         ''' Updates the time differential of the shaft speed
@@ -393,6 +441,44 @@ class ShipMachineryModel(BaseMachineryModel):
             torque_main_engine=self.main_engine_torque(load_perc=load_percentage),
             torque_hsg=self.hsg_torque(load_perc=load_percentage)
         )
+        
+    def record_initial_parameters(self):
+        '''
+        Internal method to take a record of internal attributes after __init__().
+        This record will be used to reset the model later without re-instantiation.
+        '''
+        # Store BaseMachineryModel parameters
+        super().record_initial_parameters()
+        
+        # Also store the current class's parameters
+        self._initial_parameters = {
+            key: copy.deepcopy(self.__dict__[key])
+            for key in ['w_rated_me', 'd_me', 'd_hsg', 'r_me', 'r_hsg',
+                        'jp', 'kp', 'dp', 'kt', 'shaft_speed_max',
+                        'omega', 'd_omega', 'time_step', 
+                        'specific_fuel_coeffs_for_main_engine',
+                        'specific_fuel_coeffs_for_dg',
+                        'fuel_cons_me', 'fuel_cons_electrical', 'fuel_cons',
+                        'power_me', 'power_hsg', 'me_rated', 'hsg_rated',
+                        'load_hist', 'fuel_rate_me', 'fuel_rate_hsg',
+                        'fuel_me', 'fuel_hsg', 'fuel', 'fuel_rate',
+                        'load_perc_me', 'load_perc_hsg', 'power_total', 'power_prop']
+            }
+
+    def reset(self):
+        '''
+        Resets the internal state of the ship to its initial record.
+        Should be called at the beginning of each episode.
+        '''
+        for key, value in self._initial_parameters.items():
+            setattr(self, key, copy.deepcopy(value))
+
+        # Re-create integrator and drawer
+        self.int = EulerInt()
+        self.int.set_dt(self.time_step)
+        
+        # Reset super class (Base Machinery Model)
+        super().reset()
 
 
 class SimplifiedMachineryModel(BaseMachineryModel):
