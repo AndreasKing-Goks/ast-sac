@@ -43,22 +43,13 @@ class NavigationSystem:
             integrator_windup_limit=0.5,
     ):
         ## Initial internal attributes
-        self.init_route = route
-        self.init_ra = radius_of_acceptance
-        self.init_r = lookahead_distance
-        self.init_ki = integral_gain
-        self.init_e_ct = 0
-        self.init_e_ct_int = 0
-        self.init_integrator_limit = integrator_windup_limit
-        
-        ## Internal attributes
-        self.route = self.init_route
-        self.ra = self.init_ra
-        self.r = self.init_r
-        self.ki = self.init_ki
-        self.e_ct = self.init_e_ct
-        self.e_ct_int = self.init_e_ct_int
-        self.integrator_limit = self.init_integrator_limit
+        self.route = route
+        self.ra = radius_of_acceptance
+        self.r = lookahead_distance
+        self.ki = integral_gain
+        self.e_ct = 0.0
+        self.e_ct_int = 0.0
+        self.integrator_limit = integrator_windup_limit
         
         self.load_waypoints(self.route)
 
@@ -111,26 +102,15 @@ class NavigationSystem:
         dy = self.east[k] - self.east[k - 1]
         alpha_k = math.atan2(dy, dx)
         e_ct = -(x - self.north[k - 1]) * math.sin(alpha_k) + (y - self.east[k - 1]) * math.cos(alpha_k) # Cross-track error
-        self.e_ct = np.abs(e_ct)
+        self.e_ct = e_ct
         if e_ct ** 2 >= self.r ** 2:
             e_ct = 0.99 * self.r
-        delta = math.sqrt(self.r ** 2 - e_ct ** 2)
+            self.e_ct = e_ct
+        delta = max(1e-6, math.sqrt(self.r ** 2 - e_ct ** 2))
         if abs(self.e_ct_int + e_ct / delta) <= self.integrator_limit:
             self.e_ct_int += e_ct / delta
         chi_r = math.atan(-e_ct / delta - self.e_ct_int*self.ki)
         return alpha_k + chi_r
     
     def reset(self):
-        ''' Reset the internal attributes of the Navigation System 
-            to its initial values, while also resetting the route 
-            container
-        '''
-        self.route = self.init_route
-        self.ra = self.init_ra
-        self.r = self.init_r
-        self.ki = self.init_ki
-        self.e_ct = self.init_e_ct
-        self.e_ct_int = self.init_e_ct_int
-        self.integrator_limit = self.init_integrator_limit
-        
-        self.load_waypoints(self.route)
+        self.e_ct_int = 0.0

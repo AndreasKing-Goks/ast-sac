@@ -266,7 +266,7 @@ def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold 
     reward = 0
     
     # Compute reward
-    reward = base_reward(test_e_ct)
+    reward = base_reward(np.abs(test_e_ct))
     
     # If is_nav_failure
     if is_test_nav_failure:
@@ -323,7 +323,7 @@ def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 5
     termination = False
     
     # Compute reward
-    reward = -base_reward(obs_e_ct)
+    reward = -base_reward(np.abs(obs_e_ct))
     
     # If is_nav_failure
     if is_obs_nav_failure:
