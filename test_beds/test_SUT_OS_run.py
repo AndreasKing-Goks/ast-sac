@@ -25,6 +25,7 @@ from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
 from utils.basic_animate import ShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
+from utils.center_plot import center_plot_window
 
 ### IMPORT TOOLS
 import argparse
@@ -78,7 +79,7 @@ parser.add_argument('--cuda', action="store_true", default=True,
 
 # Timesteps and episode parameters
 parser.add_argument('--time_step', type=int, default=2, metavar='N',
-                    help='time step size in second for ship transit simulator (default: 0.5)')
+                    help='time step size in second for ship transit simulator (default: 2)')
 parser.add_argument('--num_steps', type=int, default=100, metavar='N',
                     help='maximum number of steps across all episodes (default: 100000)')
 parser.add_argument('--num_steps_episode', type=int, default=10000, metavar='N',
@@ -192,28 +193,30 @@ ship_in_test_simu_setup = SimulationConfiguration(
     integration_step=args.time_step,
     simulation_time=None,
 )
+test_initial_propeller_shaft_speed = 300
 test_ship = ShipModelAST(ship_config=ship_config,
                        machinery_config=machinery_config,
                        environment_config=env_config,
                        simulation_config=ship_in_test_simu_setup,
-                       initial_propeller_shaft_speed_rad_per_s=400 * np.pi / 30)
+                       initial_propeller_shaft_speed_rad_per_s=test_initial_propeller_shaft_speed * np.pi / 30)
 
 # Obstacle Ship
 ship_as_obstacle_simu_setup = SimulationConfiguration(
     initial_north_position_m=9900,
     initial_east_position_m=14900,
     initial_yaw_angle_rad=-90 * np.pi / 180,
-    initial_forward_speed_m_per_s=0,
-    initial_sideways_speed_m_per_s=0,
+    initial_forward_speed_m_per_s=1.732,
+    initial_sideways_speed_m_per_s=1.732,
     initial_yaw_rate_rad_per_s=0,
     integration_step=args.time_step,
     simulation_time=None,
 )
+obs_initial_propeller_shaft_speed = 200
 obs_ship = ShipModelAST(ship_config=ship_config,
                        machinery_config=machinery_config,
                        environment_config=env_config,
                        simulation_config=ship_as_obstacle_simu_setup,
-                       initial_propeller_shaft_speed_rad_per_s=400 * np.pi / 30)
+                       initial_propeller_shaft_speed_rad_per_s=obs_initial_propeller_shaft_speed * np.pi / 30)
 
 ## Configure the map data
 map_data = [
@@ -226,7 +229,7 @@ map = PolygonObstacle(map_data)
 
 ## Set the throttle and autopilot controllers for the test ship
 test_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=0.05, ki_ship_speed=0.13, kp_shaft_speed=0.1, ki_shaft_speed=0.005
+    kp_ship_speed=100, ki_ship_speed=100, kp_shaft_speed=100, ki_shaft_speed=0.0001
 )
 test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     gains=test_ship_throttle_controller_gains,
@@ -237,7 +240,7 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
 
 test_route_filename = 'test_ship_route.txt'
 test_route_name = get_data_path(test_route_filename)
-test_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.00001)
+test_heading_controller_gains = HeadingControllerGains(kp=0.9, kd=50, ki=0.001)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -252,17 +255,17 @@ test_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-test_desired_forward_speed = 5.0
+test_desired_forward_speed = 8.0
 
 test_integrator_term = []
 test_times = []
 
 ## Set the throttle and autopilot controllers for the obstacle ship
 obs_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=7, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=1
+    kp_ship_speed=605.25, ki_ship_speed=0.011, kp_shaft_speed=1005.7, ki_shaft_speed=0.011
 )
 obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
-    gains=test_ship_throttle_controller_gains,
+    gains=obs_ship_throttle_controller_gains,
     max_shaft_speed=obs_ship.ship_machinery_model.shaft_speed_max,
     time_step=args.time_step,
     initial_shaft_speed_integral_error=114
@@ -280,12 +283,12 @@ obs_los_guidance_parameters = LosParameters(
 obs_auto_pilot = HeadingBySampledRouteController(
     obs_route_name,
     heading_controller_gains=obs_heading_controller_gains,
-    los_parameters=test_los_guidance_parameters,
+    los_parameters=obs_los_guidance_parameters,
     time_step=args.time_step,
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-obs_desired_forward_speed = 5.0 # 8.0
+obs_desired_forward_speed = 4.0 # 5.5 immediate near collision.
 
 obs_integrator_term = []
 obs_times = []
@@ -324,7 +327,7 @@ time_since_last_ship_drawing = 30
 # Set Collav Mode
 collav_mode = None
 collav_mode = 'simple'
-# collav_mode = 'sbmpc'
+collav_mode = 'sbmpc'
 
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
 env = MultiShipEnv(assets=assets,
@@ -368,7 +371,7 @@ os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
 # For animation
 animation = False
-# animation = True
+animation = True
 
 if animation:
     test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
@@ -425,38 +428,43 @@ plot_2 = True
 plot_3 = False
 # plot_3 = True
 
-# Create a plot 1 single figure and axis instead of a grid
-if plot_1:
-    plt.figure(figsize=(10, 5.5))
 
-    # Plot 1.1: Ship trajectory with sampled route
-    # Test ship
-    plt.plot(ts_results_df['east position [m]'].to_numpy(), ts_results_df['north position [m]'].to_numpy())
-    plt.scatter(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, marker='x', color='blue')  # Waypoints
-    plt.plot(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, linestyle='--', color='blue')  # Line
-    for x, y in zip(test.ship_model.ship_drawings[1], test.ship_model.ship_drawings[0]):
-        plt.plot(x, y, color='blue')
-    # for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
-    #     test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
-    #     plt.gca().add_patch(test_radius_circle)
-    # Obs ship    
-    plt.plot(os_results_df['east position [m]'].to_numpy(), os_results_df['north position [m]'].to_numpy())
-    plt.scatter(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, marker='x', color='red')  # Waypoints
-    plt.plot(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, linestyle='--', color='red')  # Line
-    for x, y in zip(obs.ship_model.ship_drawings[1], obs.ship_model.ship_drawings[0]):
-        plt.plot(x, y, color='red')
-    for i, (east, north) in enumerate(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north)):
-        obs_radius_circle = Circle((east, north), args.radius_of_acceptance, color='red', alpha=0.3, fill=True)
-        plt.gca().add_patch(obs_radius_circle)
-    map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+# Create a No.4 2x2 grid for subplots
+if plot_3:
+    fig_3, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 10))
+    axes = axes.flatten()  # Flatten the 2D array for easier indexing
 
-    plt.xlim(0, 20000)
-    plt.ylim(0, 10000)
-    plt.title('Ship Trajectory with the Sampled Route')
-    plt.xlabel('East position (m)')
-    plt.ylabel('North position (m)')
-    plt.gca().set_aspect('equal')
-    plt.grid(color='0.8', linestyle='-', linewidth=0.5)
+    # Plot 4.1: Test north position
+    axes[0].plot(ts_results_df['time [s]'], ts_results_df['north position [m]'])
+    axes[0].set_title('Test Ship North Position [m]')
+    axes[0].set_xlabel('Time (s)')
+    axes[0].set_ylabel('Position (m)')
+    axes[0].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[0].set_xlim(left=0)
+
+    # Plot 4.2: Obsacle north position
+    axes[1].plot(os_results_df['time [s]'], os_results_df['north position [m]'])
+    axes[1].set_title('Obstacle Ship North Position [m]')
+    axes[1].set_xlabel('Time (s)')
+    axes[1].set_ylabel('Position (m)')
+    axes[1].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[1].set_xlim(left=0)
+
+    # Plot 4.3: Test east position
+    axes[2].plot(ts_results_df['time [s]'], ts_results_df['east position [m]'])
+    axes[2].set_title('Test Ship East Position [m]')
+    axes[2].set_xlabel('Time (s)')
+    axes[2].set_ylabel('Position (m)')
+    axes[2].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[2].set_xlim(left=0)
+
+    # Plot 4.1: Obsacle east position
+    axes[3].plot(os_results_df['time [s]'], os_results_df['east position [m]'])
+    axes[3].set_title('Obstacle Ship East Position [m]')
+    axes[3].set_xlabel('Time (s)')
+    axes[3].set_ylabel('Position (m)')
+    axes[3].grid(color='0.8', linestyle='-', linewidth=0.5)
+    axes[3].set_xlim(left=0)
 
     # Adjust layout for better spacing
     plt.tight_layout()
@@ -464,7 +472,11 @@ if plot_1:
 # Create a No.2 3x4 grid for subplots
 if plot_2:
     fig_2, axes = plt.subplots(nrows=3, ncols=4, figsize=(15, 10))
+    plt.figure(fig_2.number)  # Ensure it's the current figure
     axes = axes.flatten()  # Flatten the 2D array for easier indexing
+    
+    # Center plotting
+    center_plot_window()
 
     # Plot 2.1: Forward Speed
     axes[0].plot(ts_results_df['time [s]'], ts_results_df['forward speed [m/s]'])
@@ -573,45 +585,41 @@ if plot_2:
     # Adjust layout for better spacing
     plt.tight_layout()
 
-# Create a No.4 2x2 grid for subplots
-if plot_3:
-    fig_3, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 10))
-    axes = axes.flatten()  # Flatten the 2D array for easier indexing
+# Create a plot 1 single figure and axis instead of a grid
+if plot_1:
+    plt.figure(figsize=(10, 5.5))
 
-    # Plot 4.1: Test north position
-    axes[0].plot(ts_results_df['time [s]'], ts_results_df['north position [m]'])
-    axes[0].set_title('Test Ship North Position [m]')
-    axes[0].set_xlabel('Time (s)')
-    axes[0].set_ylabel('Position (m)')
-    axes[0].grid(color='0.8', linestyle='-', linewidth=0.5)
-    axes[0].set_xlim(left=0)
+    # Plot 1.1: Ship trajectory with sampled route
+    # Test ship
+    plt.plot(ts_results_df['east position [m]'].to_numpy(), ts_results_df['north position [m]'].to_numpy())
+    plt.scatter(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, marker='x', color='blue')  # Waypoints
+    plt.plot(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, linestyle='--', color='blue')  # Line
+    for x, y in zip(test.ship_model.ship_drawings[1], test.ship_model.ship_drawings[0]):
+        plt.plot(x, y, color='blue')
+    # for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
+    #     test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
+    #     plt.gca().add_patch(test_radius_circle)
+    # Obs ship    
+    plt.plot(os_results_df['east position [m]'].to_numpy(), os_results_df['north position [m]'].to_numpy())
+    plt.scatter(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, marker='x', color='red')  # Waypoints
+    plt.plot(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, linestyle='--', color='red')  # Line
+    for x, y in zip(obs.ship_model.ship_drawings[1], obs.ship_model.ship_drawings[0]):
+        plt.plot(x, y, color='red')
+    for i, (east, north) in enumerate(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north)):
+        obs_radius_circle = Circle((east, north), args.radius_of_acceptance, color='red', alpha=0.3, fill=True)
+        plt.gca().add_patch(obs_radius_circle)
+    map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
 
-    # Plot 4.2: Obsacle north position
-    axes[1].plot(os_results_df['time [s]'], os_results_df['north position [m]'])
-    axes[1].set_title('Obstacle Ship North Position [m]')
-    axes[1].set_xlabel('Time (s)')
-    axes[1].set_ylabel('Position (m)')
-    axes[1].grid(color='0.8', linestyle='-', linewidth=0.5)
-    axes[1].set_xlim(left=0)
-
-    # Plot 4.3: Test east position
-    axes[2].plot(ts_results_df['time [s]'], ts_results_df['east position [m]'])
-    axes[2].set_title('Test Ship East Position [m]')
-    axes[2].set_xlabel('Time (s)')
-    axes[2].set_ylabel('Position (m)')
-    axes[2].grid(color='0.8', linestyle='-', linewidth=0.5)
-    axes[2].set_xlim(left=0)
-
-    # Plot 4.1: Obsacle east position
-    axes[3].plot(os_results_df['time [s]'], os_results_df['east position [m]'])
-    axes[3].set_title('Obstacle Ship East Position [m]')
-    axes[3].set_xlabel('Time (s)')
-    axes[3].set_ylabel('Position (m)')
-    axes[3].grid(color='0.8', linestyle='-', linewidth=0.5)
-    axes[3].set_xlim(left=0)
+    plt.xlim(0, 20000)
+    plt.ylim(0, 10000)
+    plt.title('Ship Trajectory with the Sampled Route')
+    plt.xlabel('East position (m)')
+    plt.ylabel('North position (m)')
+    plt.gca().set_aspect('equal')
+    plt.grid(color='0.8', linestyle='-', linewidth=0.5)
 
     # Adjust layout for better spacing
     plt.tight_layout()
-    
+
 # Show Plot
 plt.show()
