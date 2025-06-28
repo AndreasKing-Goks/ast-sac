@@ -393,27 +393,11 @@ class HeadingBySampledRouteController:
         return self.heading_controller.rudder_angle_from_heading_setpoint(heading_ref=self.heading_ref + desired_heading_offset, measured_heading=heading)
     
     ## ADDITIONAL ##
-    def is_reach_radius_of_acceptance(self, pos, r_o_a):
-        '''
-            Check if the obstacle ship reach the radius of acceptance region
-        '''
-        # Unpack the argument
-        n_pos, e_pos = pos
-        
-        # Compute the distance to the next route
-        dist_to_next_route = np.sqrt((n_pos - self.navigate.north[self.next_wpt])**2 + 
-                                     (e_pos - self.navigate.east[self.next_wpt])**2)
-        
-        reach_radius_of_acceptance =  dist_to_next_route < r_o_a
-        return reach_radius_of_acceptance 
-    
-    
     def get_heading_error(self):
         return np.abs(self.heading_mea - self.heading_ref)
     
     def get_cross_track_error(self):
         return self.navigate.e_ct
-    
     
     def record_initial_parameters(self):
         '''
