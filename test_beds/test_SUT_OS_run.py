@@ -252,14 +252,14 @@ test_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-test_desired_forward_speed = 8.0
+test_desired_forward_speed = 5.0
 
 test_integrator_term = []
 test_times = []
 
 ## Set the throttle and autopilot controllers for the obstacle ship
 obs_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=7, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=0.005
+    kp_ship_speed=7, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=1
 )
 obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     gains=test_ship_throttle_controller_gains,
@@ -285,7 +285,7 @@ obs_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-obs_desired_forward_speed = 8.0 # 8.0
+obs_desired_forward_speed = 5.0 # 8.0
 
 obs_integrator_term = []
 obs_times = []
@@ -368,7 +368,7 @@ os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
 # For animation
 animation = False
-animation = True
+# animation = True
 
 if animation:
     test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
@@ -468,6 +468,7 @@ if plot_2:
 
     # Plot 2.1: Forward Speed
     axes[0].plot(ts_results_df['time [s]'], ts_results_df['forward speed [m/s]'])
+    axes[0].axhline(y=test_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
     axes[0].set_title('Test Ship Forward Speed [m/s]')
     axes[0].set_xlabel('Time (s)')
     axes[0].set_ylabel('Forward Speed (m/s)')
@@ -476,6 +477,7 @@ if plot_2:
 
     # Plot 3.1: Forward Speed
     axes[1].plot(os_results_df['time [s]'], os_results_df['forward speed [m/s]'])
+    axes[1].axhline(y=obs_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
     axes[1].set_title('Obstacle Ship Forward Speed [m/s]')
     axes[1].set_xlabel('Time (s)')
     axes[1].set_ylabel('Forward Speed (m/s)')
