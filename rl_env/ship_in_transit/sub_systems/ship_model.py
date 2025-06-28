@@ -955,16 +955,13 @@ class ShipModelAST(BaseShipModel):
             if key != 'time [s]':
                 last_value = self.simulation_results[key][-1]
                 self.simulation_results[key].append(last_value)
-                    
-    # def store_los_cross_track_error(self, e_ct):
-    #     self.simulation_results['cross track error [m]'].append(e_ct)
-        
-    # def store_heading_error(self, e_psi):
-    #     self.simulation_results['heading error [deg]'].append(e_psi)
         
     def reset(self):
         # Call the reset method from the parent class
         super().reset()
+        
+        # Reset the machinery 
+        self.ship_machinery_model.reset()
         
         #  Also reset the results and draws container
         self.simulation_results = defaultdict(list)

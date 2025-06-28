@@ -2,7 +2,7 @@
 This module provides classes of controllers used to control the ship inside the simulator.
 """
 
-
+import copy
 import numpy as np
 from typing import List, NamedTuple, Union
 
@@ -48,6 +48,9 @@ class PiController:
         self.ki = ki
         self.error_i = initial_integral_error
         self.time_step = time_step
+        
+        # Record initial parameters for reset purposes
+        self.record_initial_parameters()
 
     def pi_ctrl(self, setpoint, measurement, *args):
         ''' Uses a proportional-integral control law to calculate a control
@@ -67,7 +70,26 @@ class PiController:
         between "low" and "hi"
         '''
         return max(low, min(val, hi))
-
+    
+    def record_initial_parameters(self):
+        '''
+        Stores a deep copy of initial waypoint data for reset.
+        '''
+        self._initial_state = {
+            'kp': copy.deepcopy(self.kp),  
+            'ki': copy.deepcopy(self.ki),
+            'error_i': copy.deepcopy(self.error_i),
+            'time_step': copy.deepcopy(self.time_step)
+        }
+        
+    def reset(self):
+        '''
+        Reset the PI controller for a new episode.
+        '''
+        self.kp = copy.deepcopy(self._initial_state['kp'])
+        self.ki = copy.deepcopy(self._initial_state['ki'])
+        self.error_i = copy.deepcopy(self._initial_state['error_i'])
+        self.time_step = copy.deepcopy(self._initial_state['time_step'])
 
 class PidController:
     def __init__(self, kp: float, kd: float, ki: float, time_step: float):
@@ -77,6 +99,9 @@ class PidController:
         self.error_i = 0
         self.prev_error = 0
         self.time_step = time_step
+        
+        # Record initial parameters for reset purposes
+        self.record_initial_parameters()
 
     def pid_ctrl(self, setpoint, measurement, *args):
         ''' Uses a proportional-derivative-integral control law to calculate
@@ -98,6 +123,30 @@ class PidController:
         between "low" and "hi"
         '''
         return max(low, min(val, hi))
+
+    def record_initial_parameters(self):
+        '''
+        Stores a deep copy of initial waypoint data for reset.
+        '''
+        self._initial_state = {
+            'kp': copy.deepcopy(self.kp),  
+            'ki': copy.deepcopy(self.ki),
+            'kd': copy.deepcopy(self.kd),
+            'error_i': copy.deepcopy(self.error_i),
+            'prev_error': copy.deepcopy(self.prev_error),
+            'time_step': copy.deepcopy(self.time_step)
+        }
+
+    def reset(self):
+        '''
+        Reset the PID controller for a new episode.
+        '''
+        self.kp = copy.deepcopy(self._initial_state['kp'])
+        self.ki = copy.deepcopy(self._initial_state['ki'])
+        self.kd = copy.deepcopy(self._initial_state['kd'])
+        self.error_i = copy.deepcopy(self._initial_state['error_i'])
+        self.prev_error = copy.deepcopy(self._initial_state['prev_error'])
+        self.time_step = copy.deepcopy(self._initial_state['time_step'])
     
     
 ###################################################################################################################
@@ -119,36 +168,45 @@ class EngineThrottleFromSpeedSetPoint:
             initial_shaft_speed_integral_error: float
     ):
         # Initial internal attribute
-        self.init_ship_speed_controller = PiController(
+        self.ship_speed_controller = PiController(
             kp=gains.kp_ship_speed, ki=gains.ki_ship_speed, time_step=time_step
         )
-        self.init_shaft_speed_controller = PiController(
+        self.shaft_speed_controller = PiController(
             kp=gains.kp_shaft_speed,
             ki=gains.ki_shaft_speed,
             time_step=time_step,
             initial_integral_error=initial_shaft_speed_integral_error
         )
-        self.init_max_shaft_speed = max_shaft_speed
+        self.max_shaft_speed = max_shaft_speed
         
-        # Internal attribute
-        self.ship_speed_controller = self.init_ship_speed_controller
-        self.shaft_speed_controller = self.init_shaft_speed_controller
-        self.max_shaft_speed = self.init_max_shaft_speed
+        # Record initial parameters for reset purposes
+        self.record_initial_parameters()
 
     def throttle(self, speed_set_point, measured_speed, measured_shaft_speed):
         desired_shaft_speed = self.ship_speed_controller.pi_ctrl(setpoint=speed_set_point, measurement=measured_speed)
-        # desired_shaft_speed = self.ship_speed_controller.sat(val=desired_shaft_speed, low=0, hi=self.max_shaft_speed)
+        desired_shaft_speed = self.ship_speed_controller.sat(val=desired_shaft_speed, low=0, hi=self.max_shaft_speed)
         throttle = self.shaft_speed_controller.pi_ctrl(setpoint=desired_shaft_speed, measurement=measured_shaft_speed)
-        # return self.shaft_speed_controller.sat(val=throttle, low=0, hi=1.1)
-        return throttle
+        return self.shaft_speed_controller.sat(val=throttle, low=0, hi=1.1)
+        # return throttle
+    
+    def record_initial_parameters(self):
+        '''
+        Stores a deep copy of initial parameters for reset
+        '''
+        self._initial_state = {
+            'max_shaft_speed': copy.deepcopy(self.max_shaft_speed)
+        }
     
     def reset(self):
-        ''' Reset the internal attributes of the throttle controller
+        ''' 
+            Reset the internal attributes of the throttle controller
             its initial values
         '''
-        self.ship_speed_controller = self.init_ship_speed_controller
-        self.shaft_speed_controller = self.init_shaft_speed_controller
-        self.max_shaft_speed = self.init_max_shaft_speed
+        self.max_shaft_speed = copy.deepcopy(self._initial_state['max_shaft_speed'])
+        
+        # Reset the PI controllers
+        self.ship_speed_controller.reset()
+        self.shaft_speed_controller.reset()
 
 
 class ThrottleFromSpeedSetPointSimplifiedPropulsion:
@@ -174,8 +232,16 @@ class ThrottleFromSpeedSetPointSimplifiedPropulsion:
     
 class HeadingByReferenceController:
     def __init__(self, gains: HeadingControllerGains, time_step, max_rudder_angle):
-        self.ship_heading_controller = PidController(kp=gains.kp, kd=gains.kd, ki=gains.ki, time_step=time_step)
+        self.gains = gains
+        self.time_step = time_step
+        self.ship_heading_controller = PidController(kp=self.gains.kp, 
+                                                     kd=self.gains.kd, 
+                                                     ki=self.gains.ki, 
+                                                     time_step=self.time_step)
         self.max_rudder_angle = max_rudder_angle
+        
+        # Record initial parameters for reset purposes
+        self.record_initial_parameters()
 
     def rudder_angle_from_heading_setpoint(self, heading_ref: float, measured_heading: float):
         ''' This method finds a suitable rudder angle for the ship to
@@ -187,7 +253,25 @@ class HeadingByReferenceController:
         '''
         rudder_angle = -self.ship_heading_controller.pid_ctrl(setpoint=heading_ref, measurement=measured_heading)
         return self.ship_heading_controller.sat(rudder_angle, -self.max_rudder_angle, self.max_rudder_angle)
-
+    
+    def record_initial_parameters(self):
+        '''
+        Stores a deep copy of heading controller for reset.
+        '''
+        self._initial_state = {
+            'max_rudder_angle': copy.deepcopy(self.max_rudder_angle),  
+        }
+    
+    def reset(self):
+        ''' 
+            Reset the internal attributes of the heading controller
+            its initial values
+        '''
+        self.max_rudder_angle = copy.deepcopy(self._initial_state['max_rudder_angle'])
+        
+        # Reset the heading controller
+        self.ship_heading_controller.reset()
+        
 
 class HeadingByRouteController:
     def __init__(
@@ -208,19 +292,15 @@ class HeadingByRouteController:
             integrator_windup_limit=los_parameters.integrator_windup_limit
         )
         ## Initial internal attributes
-        self.init_next_wpt = 1
-        self.init_prev_wpt = 0
+        self.next_wpt = 1
+        self.prev_wpt = 0
         
-        self.init_heading_ref = 0
-        self.init_heading_mea = 0
+        self.heading_ref = 0
+        self.heading_mea = 0
         
-        ## Internal attributes
-        self.next_wpt = self.init_next_wpt
-        self.prev_wpt = self.init_prev_wpt
+        # Record initial parameters for reset purposes
+        self.record_initial_parameters()
         
-        self.heading_ref = self.init_heading_ref
-        self.heading_mea = self.init_heading_mea
-
     def rudder_angle_from_route(self, north_position, east_position, heading):
         ''' This method finds a suitable rudder angle for the ship to follow
             a predefined route specified in the "navigate"-instantiation of the
@@ -232,21 +312,32 @@ class HeadingByRouteController:
         return self.heading_controller.rudder_angle_from_heading_setpoint(heading_ref=self.heading_ref, measured_heading=heading)
     
     ## ADDITIONAL ##
-    def get_heading_error(self):
-        return np.abs(self.heading_mea - self.heading_ref)
-    
-    def get_error_cross_track(self):
-        return self.navigate.e_ct
+    def record_initial_parameters(self):
+        '''
+        Stores a deep copy of heading controller for reset.
+        '''
+        self._initial_state = {
+            'next_wpt': 1,
+            'prev_wpt': 0,
+            'heading_ref': 0,
+            'heading_mea': 0
+        }
     
     def reset(self):
+        '''
+        Reset the heading controller for a new episode.
+        '''
         # Internal attributes reset
-        self.next_wpt = self.init_next_wpt
-        self.prev_wpt = self.init_prev_wpt
+        self.next_wpt = self._initial_state['next_wpt']
+        self.prev_wpt = self._initial_state['prev_wpt']
         
-        self.heading_ref = self.init_heading_ref
-        self.heading_mea = self.init_heading_mea
+        self.heading_ref = self._initial_state['heading_ref']
+        self.heading_mea = self._initial_state['heading_mea']
         
-        # Navigation system attributes
+        # Heading controller reset
+        self.heading_controller.reset()
+        
+        # Navigation system reset
         self.navigate.reset()
     
 
@@ -272,35 +363,23 @@ class HeadingBySampledRouteController:
         )
         
         ## Initial internal attributes
-        self.init_next_wpt = 1
-        self.init_prev_wpt = 0
+        self.next_wpt = 1
+        self.prev_wpt = 0
         
-        self.init_heading_ref = 0
-        self.init_heading_mea = 0
+        self.heading_ref = 0
+        self.heading_mea = 0
         
-        self.init_num_of_samplings = num_of_samplings
-        self.init_sampling_counters = 0
-        self.init_distance_points_north = self.navigate.north[1] - self.navigate.north[0]
-        self.init_distance_points_east = self.navigate.east[1] - self.navigate.east[0]
+        self.num_of_samplings = num_of_samplings
         
-        ## Internal attributes
-        self.next_wpt = self.init_next_wpt
-        self.prev_wpt = self.init_prev_wpt
+        # Record initial parameters for reset purposes
+        self.record_initial_parameters()
         
-        self.heading_ref = self.init_heading_ref
-        self.heading_mea = self.init_heading_mea
-        
-        self.num_of_samplings = self.init_num_of_samplings
-        self.sampling_counters = self.init_sampling_counters
-        self.distance_points_north = self.init_distance_points_north
-        self.distance_points_east = self.init_distance_points_east
-        
-    def update_route(self, route_shifts):
+    def update_route(self, intermediate_waypoints):
         # Get the route shifts and update the new route
-        route_shift_n, route_shift_e = route_shifts
+        IW_n, IW_e = intermediate_waypoints
         
-        self.navigate.north.insert(-1, float(route_shift_n))
-        self.navigate.east.insert(-1, float(route_shift_e))
+        self.navigate.north.insert(-1, float(IW_n))
+        self.navigate.east.insert(-1, float(IW_e))
         
 
     def rudder_angle_from_sampled_route(self, north_position, east_position, heading, desired_heading_offset=0.0):
@@ -314,15 +393,20 @@ class HeadingBySampledRouteController:
         return self.heading_controller.rudder_angle_from_heading_setpoint(heading_ref=self.heading_ref + desired_heading_offset, measured_heading=heading)
     
     ## ADDITIONAL ##
-    def if_reach_radius_of_acceptance(self, n_pos, e_pos, r_o_a):
-        # print(n_pos, e_pos)
-        # print(self.next_wpt)
-        # print(self.navigate.north, self.navigate.east)
-        # print(self.navigate.north[self.next_wpt], self.navigate.east[self.next_wpt])
-        dist_to_next_route = np.sqrt((n_pos - self.navigate.north[self.next_wpt])**2 + (e_pos - self.navigate.east[self.next_wpt])**2)
-        # print(dist_to_next_route, r_o_a)
+    def is_reach_radius_of_acceptance(self, pos, r_o_a):
+        '''
+            Check if the obstacle ship reach the radius of acceptance region
+        '''
+        # Unpack the argument
+        n_pos, e_pos = pos
+        
+        # Compute the distance to the next route
+        dist_to_next_route = np.sqrt((n_pos - self.navigate.north[self.next_wpt])**2 + 
+                                     (e_pos - self.navigate.east[self.next_wpt])**2)
+        
         reach_radius_of_acceptance =  dist_to_next_route < r_o_a
         return reach_radius_of_acceptance 
+    
     
     def get_heading_error(self):
         return np.abs(self.heading_mea - self.heading_ref)
@@ -330,23 +414,33 @@ class HeadingBySampledRouteController:
     def get_cross_track_error(self):
         return self.navigate.e_ct
     
+    
+    def record_initial_parameters(self):
+        '''
+        Stores a deep copy of heading controller for reset.
+        '''
+        self._initial_state = {
+            'next_wpt': 1,
+            'prev_wpt': 0,
+            'heading_ref': 0,
+            'heading_mea': 0
+        }
+    
     def reset(self):
-        ''' Reset the internal attributes of the heading controller
-            and the navigation system to its initial values
+        '''
+        Reset the heading controller for a new episode.
         '''
         # Internal attributes reset
-        self.next_wpt = self.init_next_wpt
-        self.prev_wpt = self.init_prev_wpt
+        self.next_wpt = self._initial_state['next_wpt']
+        self.prev_wpt = self._initial_state['prev_wpt']
         
-        self.heading_ref = self.init_heading_ref
-        self.heading_mea = self.init_heading_mea
+        self.heading_ref = self._initial_state['heading_ref']
+        self.heading_mea = self._initial_state['heading_mea']
         
-        self.num_of_samplings = self.init_num_of_samplings
-        self.sampling_counters = self.init_sampling_counters
-        self.distance_points_north = self.init_distance_points_north
-        self.distance_points_east = self.init_distance_points_east
+        # Heading controller reset
+        self.heading_controller.reset()
         
-        # Navigation system attributes
+        # Navigation system reset
         self.navigate.reset()
         
         

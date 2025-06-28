@@ -2,7 +2,7 @@
 This module provides classes that can be used for Line of Sight Guidance.
 """
 
-
+import copy
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -51,7 +51,11 @@ class NavigationSystem:
         self.e_ct_int = 0.0
         self.integrator_limit = integrator_windup_limit
         
+        # Load the route and compute waypoints
         self.load_waypoints(self.route)
+        
+        # Record initial parameters for reset purposes
+        self.record_initial_parameters()
 
     def load_waypoints(self, route, print_init_msg=False):
         ''' Reads the file containing the route and stores it as an
@@ -112,5 +116,21 @@ class NavigationSystem:
         chi_r = math.atan(-e_ct / delta - self.e_ct_int*self.ki)
         return alpha_k + chi_r
     
+    def record_initial_parameters(self):
+        '''
+        Stores a deep copy of initial waypoint data for reset.
+        '''
+        self._initial_state = {
+            'route': copy.deepcopy(self.route),  
+            'e_ct': 0.0,
+            'e_ct_int': 0.0,
+        }
+
     def reset(self):
-        self.e_ct_int = 0.0
+        '''
+        Reset the LOS internal states and waypoints for a new episode.
+        '''
+        self.e_ct = self._initial_state['e_ct']
+        self.e_ct_int = self._initial_state['e_ct_int']
+        self.route = copy.deepcopy(self._initial_state['route'])  # Update route
+        self.load_waypoints(self.route)
