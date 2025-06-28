@@ -187,13 +187,13 @@ ship_in_test_simu_setup = SimulationConfiguration(
     initial_north_position_m=100,
     initial_east_position_m=100,
     initial_yaw_angle_rad=60 * np.pi / 180,
-    initial_forward_speed_m_per_s=5.5,
+    initial_forward_speed_m_per_s=4.25,
     initial_sideways_speed_m_per_s=0,
     initial_yaw_rate_rad_per_s=0,
     integration_step=args.time_step,
     simulation_time=None,
 )
-test_initial_propeller_shaft_speed = 450
+test_initial_propeller_shaft_speed = 420
 test_ship = ShipModelAST(ship_config=ship_config,
                        machinery_config=machinery_config,
                        environment_config=env_config,
@@ -205,7 +205,7 @@ ship_as_obstacle_simu_setup = SimulationConfiguration(
     initial_north_position_m=9900,
     initial_east_position_m=14900,
     initial_yaw_angle_rad=-135 * np.pi / 180,
-    initial_forward_speed_m_per_s=3,
+    initial_forward_speed_m_per_s=3.5,
     initial_sideways_speed_m_per_s=0,
     initial_yaw_rate_rad_per_s=0,
     integration_step=args.time_step,
@@ -229,7 +229,7 @@ map = PolygonObstacle(map_data)
 
 ## Set the throttle and autopilot controllers for the test ship
 test_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=5.25, ki_ship_speed=0.02, kp_shaft_speed=5, ki_shaft_speed=0.001
+    kp_ship_speed=205.25, ki_ship_speed=0.0525, kp_shaft_speed=50, ki_shaft_speed=0.00025
 )
 test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     gains=test_ship_throttle_controller_gains,
@@ -240,7 +240,7 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
 
 test_route_filename = 'test_ship_route.txt'
 test_route_name = get_data_path(test_route_filename)
-test_heading_controller_gains = HeadingControllerGains(kp=2.5, kd=35, ki=0.001)
+test_heading_controller_gains = HeadingControllerGains(kp=1.65, kd=75, ki=0.001)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -255,14 +255,14 @@ test_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-test_desired_forward_speed =5.5
+test_desired_forward_speed =4.5
 
 test_integrator_term = []
 test_times = []
 
 ## Set the throttle and autopilot controllers for the obstacle ship
 obs_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=605.25, ki_ship_speed=0.011, kp_shaft_speed=505.7, ki_shaft_speed=0.011
+    kp_ship_speed=205.25, ki_ship_speed=0.0525, kp_shaft_speed=50, ki_shaft_speed=0.00025
 )
 obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     gains=obs_ship_throttle_controller_gains,
@@ -273,7 +273,7 @@ obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
 
 obs_route_filename = 'obs_ship_route.txt'
 obs_route_name = get_data_path(obs_route_filename)
-obs_heading_controller_gains = HeadingControllerGains(kp=3, kd=50, ki=0.001)
+obs_heading_controller_gains = HeadingControllerGains(kp=1.65, kd=75, ki=0.001)
 obs_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -326,8 +326,8 @@ time_since_last_ship_drawing = 30
 ################################### ENV SPACE ###################################
 # Set Collav Mode
 collav_mode = None
-collav_mode = 'simple'
-collav_mode = 'sbmpc'
+# collav_mode = 'simple'
+# collav_mode = 'sbmpc'
 
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
 env = MultiShipEnv(assets=assets,
@@ -371,7 +371,7 @@ os_results_df = pd.DataFrame().from_dict(obs.ship_model.simulation_results)
 
 # For animation
 animation = False
-# animation = True
+animation = True
 
 if animation:
     test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
@@ -418,7 +418,7 @@ if animation:
 ## SHOW PLOT
 # Plot 1: Map plot
 plot_1 = False
-plot_1 = True
+# plot_1 = True
 
 # Plot 2: Status plot
 plot_2 = False
