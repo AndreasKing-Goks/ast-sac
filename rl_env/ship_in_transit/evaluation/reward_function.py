@@ -52,11 +52,11 @@ class RewardTracker:
         self.from_obs_ship.append(r_obs_ship_grounding + r_obs_ship_nav_failure)
         self.total.append(r_total)
         
-def get_total_reward_and_done_flag(env_args, 
-                                   intermediate_waypoints, 
-                                   reward_tracker:RewardTracker,
-                                   normalize_reward=False, 
-                                   use_relative_bearing = True):
+def get_reward_and_env_info(env_args, 
+                            intermediate_waypoints, 
+                            reward_tracker:RewardTracker,
+                            normalize_reward=False, 
+                            use_relative_bearing = True):
     ## Unpack env_args
     assets, map_obj, travel_dist, traj_segment_length, travel_time = env_args
     
@@ -78,7 +78,7 @@ def get_total_reward_and_done_flag(env_args,
     obs_e_pos       = obs.ship_model.east
     obs_pos         = [obs_n_pos, obs_e_pos]
     obs_heading     = obs.ship_model.yaw_angle
-    obs_e_ct        = test.ship_model.simulation_results['cross track error [m]'][-1]
+    obs_e_ct        = obs.ship_model.simulation_results['cross track error [m]'][-1]
     obs_ship_length = obs.ship_model.l_ship
     
     ## COMPUTE ARGUMENTS FOR THE REWARD FUNCTIONS
@@ -150,21 +150,14 @@ def get_total_reward_and_done_flag(env_args,
     test_route_end   = [test.auto_pilot.navigate.north[-1], test.auto_pilot.navigate.east[-1]]
     obs_route_end    = [obs.auto_pilot.navigate.north[-1], obs.auto_pilot.navigate.east[-1]]
     
-    # Get the termination status
+    ## Get the termination status for a non meaningful end
+    # Ship under test reaches endpoint or goes outside the map
     termination_7 = is_reaches_endpoint(test_route_end, test_pos)
     termination_8 = is_pos_outside_horizon(map_obj, test_pos, test_ship_length)
     
+    # Obstacle ship reaches endpoint or goes outside the map
     termination_9 = is_reaches_endpoint(obs_route_end, obs_pos)
     termination_10 = is_pos_outside_horizon(map_obj, obs_pos, obs_ship_length)
-    
-    ## CHECK DONE AND STOP_OBS FLAG
-    done_flag = any([termination_1, termination_2, termination_3, termination_4, 
-                     termination_5, termination_6, termination_7, termination_8 ]) # Flags required to turn off the simulator
-    stop_int_obs = any([termination_9, termination_10])
-    
-    # Required to stop obstacle ship integration
-    if stop_int_obs:
-        obs.stop_flag = True
     
     # Track the reward evolution
     reward_log.update(r_ship_collision / normalizing_factor,
@@ -174,7 +167,65 @@ def get_total_reward_and_done_flag(env_args,
                       r_obs_ship_nav_failure / normalizing_factor,
                       r_total)
     
-    return r_total, done_flag
+    # Get env_info
+    env_info = {
+        'events'            : [],
+        'terminal'          : False,
+        'test_ship_stop'    : False,
+        'obstacle_ship_stop': False,
+    }
+    if termination_1:
+        env_info['events'].append('Ships collision!')
+        env_info['terminal'] = True
+        env_info['test_ship_stop'] = True
+        env_info['obs_ship_stop'] = True
+    if termination_2:
+        env_info['events'].append('Ship under test experiences grounding!')
+        env_info['terminal'] = True
+        env_info['test_ship_stop'] = True
+        env_info['obs_ship_stop'] = False
+    if termination_3:
+        env_info['events'].append('Ship under test suffers navigational failure!')
+        env_info['terminal'] = True
+        env_info['test_ship_stop'] = True
+        env_info['obs_ship_stop'] = False
+    if termination_4:
+        env_info['events'].append('Obstacle ship experiences grounding!')
+        env_info['terminal'] = True
+        env_info['test_ship_stop'] = False
+        env_info['obs_ship_stop'] = True
+    if termination_5:
+        env_info['events'].append('Obstacle ship suffers navigational failure!')
+        env_info['terminal'] = True
+        env_info['test_ship_stop'] = False
+        env_info['obs_ship_stop'] = True
+    if termination_6:
+        env_info['events'].append('Learning agent samples false intermediate waypoints!')
+        env_info['terminal'] = True
+        env_info['test_ship_stop'] = False
+        env_info['obs_ship_stop'] = False
+    if termination_7:
+        env_info['events'].append('Ship under test reaches its final destination!')
+        env_info['terminal'] = False
+        env_info['test_ship_stop'] = True
+        env_info['obs_ship_stop'] = False
+    if termination_8:
+        env_info['events'].append('Ship under test goes outside the map horizon!')
+        env_info['terminal'] = False
+        env_info['test_ship_stop'] = True
+        env_info['obs_ship_stop'] = False
+    if termination_9:
+        env_info['events'].append('Obstacle ship reaches its final destination!')
+        env_info['terminal'] = False
+        env_info['test_ship_stop'] = False
+        env_info['obs_ship_stop'] = True
+    if termination_10:
+        env_info['events'].append('Obstacle ship goes outside the map horizon!')
+        env_info['terminal'] = False
+        env_info['test_ship_stop'] = False
+        env_info['obs_ship_stop'] = True
+    
+    return r_total, env_info
     
 
 def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision, termination_multiplier=100.0):

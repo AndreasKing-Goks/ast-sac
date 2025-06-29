@@ -55,6 +55,8 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             self._end_epoch(self.epoch)
 
     def _train(self):
+        # Here we do exploration.
+        # Here we will have an initial exploration paths
         if self.epoch == 0 and self.min_num_steps_before_training > 0:
             init_expl_paths = self.expl_data_collector.collect_new_paths(
                 self.max_path_length,
@@ -65,6 +67,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
                 self.replay_buffer.add_paths(init_expl_paths)
             self.expl_data_collector.end_epoch(-1)
 
+        # Here we do exploration
         self.eval_data_collector.collect_new_paths(
             self.max_path_length,
             self.num_eval_steps_per_epoch,
@@ -72,6 +75,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
         )
         gt.stamp('evaluation sampling')
 
+        # Iterate over the allowed number of training loops per epoch.
         for _ in range(self.num_train_loops_per_epoch):
             new_expl_paths = self.expl_data_collector.collect_new_paths(
                 self.max_path_length,

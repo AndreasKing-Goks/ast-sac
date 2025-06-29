@@ -337,13 +337,10 @@ env = MultiShipRLEnv(assets=assets,
                      time_since_last_ship_drawing=time_since_last_ship_drawing,
                      args=args)
 
-obsv_dim = env.obsv_dim
-action_dim = env.action_dim
-
-expl_env = env
-eval_env = env
-obsv_dim = expl_env.obsv_dim
-action_dim = eval_env.action_dim
+expl_env = NormalizedBoxEnv(env)
+eval_env = NormalizedBoxEnv(env)
+obsv_dim = expl_env.observation_space.low.size
+action_dim = expl_env.action_space.low.size
 
 variant = dict(
         algorithm="SAC",
@@ -369,7 +366,10 @@ variant = dict(
             use_automatic_entropy_tuning=True,
         ),
     )
-setup_logger('ast-sac_logs', variant=variant)
+log = False
+# log = True
+if log:
+    setup_logger('ast-sac_logs', variant=variant)
 ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
 M = variant['layer_size']
 
@@ -398,19 +398,19 @@ policy = TanhGaussianPolicy(
         action_dim=action_dim,
         hidden_sizes=[M, M],
     )
-# eval_policy = MakeDeterministic(policy)
-# eval_path_collector = MdpPathCollector(
-#         eval_env,
-#         eval_policy,
-#     )
-# expl_path_collector = MdpPathCollector(
-#         expl_env,
-#         policy,
-#     )
-# replay_buffer = EnvReplayBuffer(
-#         variant['replay_buffer_size'],
-#         expl_env,
-#     )
+eval_policy = MakeDeterministic(policy)
+eval_path_collector = MdpPathCollector(
+        eval_env,
+        eval_policy,
+    )
+expl_path_collector = MdpPathCollector(
+        expl_env,
+        policy,
+    )
+replay_buffer = EnvReplayBuffer(
+        variant['replay_buffer_size'],
+        expl_env,
+    )
 # trainer = SACTrainer(
 #         env=eval_env,
 #         policy=policy,
@@ -431,3 +431,115 @@ policy = TanhGaussianPolicy(
 #     )
 # algorithm.to(ptu.device)
 # algorithm.train()
+
+print('-------------------------------------------------')
+
+# Check normalized box env
+action_space_lo = env.action_space.low
+print('Basic env:', action_space_lo)
+action_space_norm_lo = expl_env.action_space.low
+print('Normalized box env:', action_space_norm_lo)
+print('-------------------------------------------------')
+
+# Check the sampling
+action = env.action_space.sample()
+print('Basic env:', action)
+action_norm = expl_env.action_space.sample()
+print('Normalized box env:', action_norm)
+print('-------------------------------------------------')
+
+# Check for getting intermediate waypoints based on sampled action
+# Do it 4 times
+intermediate_waypoint_list = []
+
+action = env.action_space.sample()
+print('scoping angle 1 in degree:', np.rad2deg(action.item()))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW1:', intermediate_waypoint)
+
+action = env.action_space.sample()
+print('scoping angle 2 in degree:', np.rad2deg(action.item()))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW2:', intermediate_waypoint)
+
+action = env.action_space.sample()
+print('scoping angle 3 in degree:', np.rad2deg(action.item()))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW3:', intermediate_waypoint)
+
+action = env.action_space.sample()
+print('scoping angle 4 in degree:', np.rad2deg(action.item()))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW4:', intermediate_waypoint)
+
+# Plot the points
+obs_route_n_start = obs.auto_pilot.navigate.north[0]
+obs_route_e_start = obs.auto_pilot.navigate.east[0]
+obs_route_n_end = obs.auto_pilot.navigate.north[-1]
+obs_route_e_end = obs.auto_pilot.navigate.east[-1]
+obs_route_end = [np.float64(obs_route_n_end), np.float64(obs_route_e_end)]
+obs_route_start = [np.float64(obs_route_n_start), np.float64(obs_route_e_start)]
+
+intermediate_waypoint_list.insert(0, obs_route_start)
+intermediate_waypoint_list.append(obs_route_end)
+
+north_list, east_list = zip(*intermediate_waypoint_list)
+
+# Create the figure
+plot=False
+# plot=True
+if plot:
+    plt.figure(figsize=(8, 6))
+    plt.scatter(east_list, north_list, color='red', label='Sampled Waypoints')
+    plt.plot(east_list, north_list, linestyle='--', color='gray', label='Waypoint Path')
+
+    # Annotate each point with its index
+    for idx, (e, n) in enumerate(zip(east_list, north_list)):
+        plt.text(e, n, f'{idx}', fontsize=10, ha='right', va='bottom')
+
+    # Label and style
+    map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+    plt.xlim(0, 20000)
+    plt.ylim(0, 10000)
+    plt.xlabel('East position (m)')
+    plt.ylabel('North position (m)')
+    plt.title('Intermediate Waypoints with Indices')
+    plt.gca().set_aspect('equal')
+    plt.grid(color='0.8', linestyle='-', linewidth=0.5)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+print('-------------------------------------------------')
+
+# Move the policy model to the correct device (e.g., GPU if available)
+# This ensures all model parameters are on the same device as the input tensor
+policy.to(ptu.device)
+
+# Sample a random observation from the environment’s observation space
+# This gives a NumPy array sampled uniformly from the valid bounds
+sampled_obsv = expl_env.wrapped_env.observation_space.sample()
+
+# Convert the NumPy observation into a PyTorch tensor
+sampled_obsv = ptu.from_numpy(sampled_obsv)
+
+# Move the tensor to the same device as the policy (usually GPU)
+sampled_obsv = sampled_obsv.to(ptu.device)
+
+# Display the sampled observation tensor
+print('Sampled observation from normalized env: \n', sampled_obsv)
+
+# Use the policy to sample an action based on the observation
+# The policy expects NumPy input, so we convert the tensor back to NumPy
+action = policy.get_action(ptu.get_numpy(sampled_obsv))
+
+# Print the sampled action (output of the policy)
+print('Sampled action using policy:', action)
+print('-------------------------------------------------')

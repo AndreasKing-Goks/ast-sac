@@ -23,8 +23,8 @@ def experiment(variant):
     
     expl_env = multi_ship_rl_env
     eval_env = multi_ship_rl_env
-    obsv_dim = expl_env.obsv_dim
-    action_dim = eval_env.action_dim
+    obsv_dim = expl_env.observation_space.low.size
+    action_dim = eval_env.action_space.low.size
 
     M = variant['layer_size']
     qf1 = ConcatMlp(
@@ -85,8 +85,6 @@ def experiment(variant):
     )
     algorithm.to(ptu.device)
     algorithm.train()
-
-
 
 
 if __name__ == "__main__":
