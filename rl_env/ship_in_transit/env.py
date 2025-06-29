@@ -82,7 +82,7 @@ class MultiShipRLEnv(Env):
             high = np.array([10000, 20000, 3000,
                              10000, 20000, np.pi, 3000, 10], dtype=np.float32),
         )
-        self.obs_dim = self.observation_space.shape[0]
+        self.obsv_dim = self.observation_space.shape[0]
         
         # Define action space [scoping angle] 
         self.real_low = np.array([-np.pi/6], dtype=np.float32)
@@ -588,7 +588,7 @@ class MultiShipEnv(Env):
             high = np.array([10000, 20000, 3000,
                              10000, 20000, np.pi, 3000, 10], dtype=np.float32),
         )
-        self.obs_dim = self.observation_space.shape[0]
+        self.obsv_dim = self.observation_space.shape[0]
         
         # Define action space [route_point_shift] 
         self.action_space = Box(

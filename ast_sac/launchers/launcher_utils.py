@@ -19,6 +19,8 @@ import ast_sac.utils.pythonplusplus as ppp
 
 import torch
 
+from re import sub
+
 GitInfo = namedtuple(
     'GitInfo',
     [
@@ -299,12 +301,15 @@ def setup_logger(
         ) in git_infos:
             if directory[-1] == '/':
                 directory = directory[:-1]
-            diff_file_name = directory[1:].replace("/", "-") + ".patch"
-            diff_staged_file_name = (
-                directory[1:].replace("/", "-") + "_staged.patch"
-            )
+            # diff_file_name = directory[1:].replace("/", "-") + ".patch"
+            # diff_staged_file_name = (
+            #     directory[1:].replace("/", "-") + "_staged.patch"
+            # )
+            sanitized = sub(r'[^a-zA-Z0-9_\-\.]', '_', directory)
+            diff_file_name = sanitized + ".patch"
+            diff_staged_file_name = sanitized + "_staged.patch" 
             if code_diff is not None and len(code_diff) > 0:
-                with open(osp.join(log_dir, diff_file_name), "w") as f:
+                with open(osp.join(log_dir, diff_file_name), "w", encoding="utf-8") as f:
                     f.write(code_diff + '\n')
             if code_diff_staged is not None and len(code_diff_staged) > 0:
                 with open(osp.join(log_dir, diff_staged_file_name), "w") as f:

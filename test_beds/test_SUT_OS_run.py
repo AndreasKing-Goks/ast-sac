@@ -2,7 +2,7 @@
 # print("ast_sac:", ast_sac)
 # print("ast_sac.__file__:", getattr(ast_sac, "__file__", "No __file__"))
 
-### IMPORT SIMULATOR ENVIRONMENTS
+## IMPORT SIMULATOR ENVIRONMENTS
 from rl_env.ship_in_transit.env import MultiShipEnv, ShipAssets
 
 from rl_env.ship_in_transit.sub_systems.ship_model import  ShipConfiguration, EnvironmentConfiguration, SimulationConfiguration, ShipModelAST
@@ -23,6 +23,8 @@ from ast_sac.torch.sac.sac import SACTrainer
 from ast_sac.torch.networks.mlp import ConcatMlp
 from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
+
+## IMPORT UTILS
 from utils.basic_animate import ShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 from utils.center_plot import center_plot_window
