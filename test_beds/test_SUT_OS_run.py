@@ -404,16 +404,16 @@ if animation:
                                       obs_headings)
 
     ani_ID = 1
-    ani_dir = os.path.join('animation', 'sbmpc')
+    ani_dir = os.path.join('animation', 'comparisons')
     filename  = "trajectory.mp4"
     video_path = os.path.join(ani_dir, filename)
-    fps = 480
+    fps = 120
     
     # Create the output directory if it doesn't exist
     os.makedirs(ani_dir, exist_ok=True)
     
-    # animator.save(video_path, fps)
-    animator.run(fps)
+    animator.save(video_path, fps)
+    # animator.run(fps)
 
 ## SHOW PLOT
 # Plot 1: Map plot
@@ -422,7 +422,7 @@ plot_1 = False
 
 # Plot 2: Status plot
 plot_2 = False
-plot_2 = True
+# plot_2 = True
 
 # Plot 3: Position plot
 plot_3 = False

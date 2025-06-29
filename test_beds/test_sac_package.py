@@ -3,15 +3,16 @@
 # print("ast_sac.__file__:", getattr(ast_sac, "__file__", "No __file__"))
 
 ### IMPORT SIMULATOR ENVIRONMENTS
-from rl_env.ship_in_transit.env import MultiShipRLEnv, ShipAssets
+from rl_env.ship_in_transit.env import MultiShipEnv, ShipAssets
 
 from rl_env.ship_in_transit.sub_systems.ship_model import  ShipConfiguration, EnvironmentConfiguration, SimulationConfiguration, ShipModelAST
 from rl_env.ship_in_transit.sub_systems.ship_engine import MachinerySystemConfiguration, MachineryMode, MachineryModeParams, MachineryModes, SpecificFuelConsumptionBaudouin6M26Dot3, SpecificFuelConsumptionWartila6L26
 from rl_env.ship_in_transit.sub_systems.LOS_guidance import LosParameters
 from rl_env.ship_in_transit.sub_systems.obstacle import StaticObstacle, PolygonObstacle
 from rl_env.ship_in_transit.sub_systems.controllers import ThrottleControllerGains, HeadingControllerGains, EngineThrottleFromSpeedSetPoint, HeadingBySampledRouteController
+from rl_env.ship_in_transit.utils.print_termination import print_termination
 
-### IMPORT FUNCTIONS
+## IMPORT FUNCTIONS
 import ast_sac.torch.utils.pytorch_util as ptu
 
 from ast_sac.data_management.env_replay_buffer import EnvReplayBuffer
@@ -22,12 +23,20 @@ from ast_sac.torch.sac.sac import SACTrainer
 from ast_sac.torch.networks.mlp import ConcatMlp
 from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
+from utils.basic_animate import ShipTrajectoryAnimator
+from utils.paths_utils import get_data_path
+from utils.center_plot import center_plot_window
 
+### IMPORT TOOLS
 import argparse
-
-from typing import Union, List
-
+from typing import List
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+import os
+import torch
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 # Argument Parser
 parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Args')
@@ -69,8 +78,8 @@ parser.add_argument('--cuda', action="store_true", default=True,
                     help='run on CUDA (default: False)')
 
 # Timesteps and episode parameters
-parser.add_argument('--time_step', type=int, default=0.5, metavar='N',
-                    help='time step size in second for ship transit simulator (default: 0.5)')
+parser.add_argument('--time_step', type=int, default=2, metavar='N',
+                    help='time step size in second for ship transit simulator (default: 2)')
 parser.add_argument('--num_steps', type=int, default=100, metavar='N',
                     help='maximum number of steps across all episodes (default: 100000)')
 parser.add_argument('--num_steps_episode', type=int, default=10000, metavar='N',
@@ -177,35 +186,37 @@ machinery_config = MachinerySystemConfiguration(
 ship_in_test_simu_setup = SimulationConfiguration(
     initial_north_position_m=100,
     initial_east_position_m=100,
-    initial_yaw_angle_rad=45 * np.pi / 180,
-    initial_forward_speed_m_per_s=0,
+    initial_yaw_angle_rad=60 * np.pi / 180,
+    initial_forward_speed_m_per_s=4.25,
     initial_sideways_speed_m_per_s=0,
     initial_yaw_rate_rad_per_s=0,
     integration_step=args.time_step,
-    simulation_time=7200,
+    simulation_time=None,
 )
+test_initial_propeller_shaft_speed = 420
 test_ship = ShipModelAST(ship_config=ship_config,
                        machinery_config=machinery_config,
                        environment_config=env_config,
                        simulation_config=ship_in_test_simu_setup,
-                       initial_propeller_shaft_speed_rad_per_s=400 * np.pi / 30)
+                       initial_propeller_shaft_speed_rad_per_s=test_initial_propeller_shaft_speed * np.pi / 30)
 
 # Obstacle Ship
 ship_as_obstacle_simu_setup = SimulationConfiguration(
     initial_north_position_m=9900,
     initial_east_position_m=14900,
-    initial_yaw_angle_rad=-90 * np.pi / 180,
-    initial_forward_speed_m_per_s=0,
+    initial_yaw_angle_rad=-135 * np.pi / 180,
+    initial_forward_speed_m_per_s=3.5,
     initial_sideways_speed_m_per_s=0,
     initial_yaw_rate_rad_per_s=0,
     integration_step=args.time_step,
-    simulation_time=7200,
+    simulation_time=None,
 )
+obs_initial_propeller_shaft_speed = 200
 obs_ship = ShipModelAST(ship_config=ship_config,
                        machinery_config=machinery_config,
                        environment_config=env_config,
                        simulation_config=ship_as_obstacle_simu_setup,
-                       initial_propeller_shaft_speed_rad_per_s=400 * np.pi / 30)
+                       initial_propeller_shaft_speed_rad_per_s=obs_initial_propeller_shaft_speed * np.pi / 30)
 
 ## Configure the map data
 map_data = [
@@ -218,7 +229,7 @@ map = PolygonObstacle(map_data)
 
 ## Set the throttle and autopilot controllers for the test ship
 test_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=7, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=0.005
+    kp_ship_speed=205.25, ki_ship_speed=0.0525, kp_shaft_speed=50, ki_shaft_speed=0.00025
 )
 test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     gains=test_ship_throttle_controller_gains,
@@ -226,8 +237,10 @@ test_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
     time_step=args.time_step,
     initial_shaft_speed_integral_error=114
 )
-test_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ShipTransit_OptiStress\ShipTransit_AST\data\test_ship_route.txt'
-test_heading_controller_gains = HeadingControllerGains(kp=1, kd=90, ki=0.01)
+
+test_route_filename = 'test_ship_route.txt'
+test_route_name = get_data_path(test_route_filename)
+test_heading_controller_gains = HeadingControllerGains(kp=1.65, kd=75, ki=0.001)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -242,23 +255,25 @@ test_auto_pilot = HeadingBySampledRouteController(
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-test_desired_forward_speed = 8.0
+test_desired_forward_speed =4.5
 
 test_integrator_term = []
 test_times = []
 
 ## Set the throttle and autopilot controllers for the obstacle ship
 obs_ship_throttle_controller_gains = ThrottleControllerGains(
-    kp_ship_speed=7, ki_ship_speed=0.13, kp_shaft_speed=0.05, ki_shaft_speed=0.005
+    kp_ship_speed=205.25, ki_ship_speed=0.0525, kp_shaft_speed=50, ki_shaft_speed=0.00025
 )
 obs_ship_throttle_controller = EngineThrottleFromSpeedSetPoint(
-    gains=test_ship_throttle_controller_gains,
+    gains=obs_ship_throttle_controller_gains,
     max_shaft_speed=obs_ship.ship_machinery_model.shaft_speed_max,
     time_step=args.time_step,
     initial_shaft_speed_integral_error=114
 )
-obs_route_name = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ShipTransit_OptiStress\ShipTransit_AST\data\obs_ship_route.txt'
-obs_heading_controller_gains = HeadingControllerGains(kp=1, kd=90, ki=0.01)
+
+obs_route_filename = 'obs_ship_route.txt'
+obs_route_name = get_data_path(obs_route_filename)
+obs_heading_controller_gains = HeadingControllerGains(kp=1.65, kd=75, ki=0.001)
 obs_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -268,12 +283,12 @@ obs_los_guidance_parameters = LosParameters(
 obs_auto_pilot = HeadingBySampledRouteController(
     obs_route_name,
     heading_controller_gains=obs_heading_controller_gains,
-    los_parameters=test_los_guidance_parameters,
+    los_parameters=obs_los_guidance_parameters,
     time_step=args.time_step,
     max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
     num_of_samplings=2
 )
-obs_desired_forward_speed = 8.0
+obs_desired_forward_speed = 4.0 # 5.5 immediate near collision.
 
 obs_integrator_term = []
 obs_times = []
@@ -308,10 +323,16 @@ assets: List[ShipAssets] = [test, obs]
 ship_draw = True
 time_since_last_ship_drawing = 30
 
-################################### RL SPACE ###################################
+################################### ENV SPACE ###################################
+# Set Collav Mode
+collav_mode = None
+collav_mode = 'simple'
+collav_mode = 'sbmpc'
+
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
-env = MultiShipRLEnv(assets=assets,
+env = MultiShipEnv(assets=assets,
                      map=map,
                      ship_draw=ship_draw,
+                     collav=collav_mode,
                      time_since_last_ship_drawing=time_since_last_ship_drawing,
                      args=args)
