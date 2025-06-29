@@ -369,7 +369,7 @@ variant = dict(
             use_automatic_entropy_tuning=True,
         ),
     )
-setup_logger('name-of-experiment', variant=variant)
+setup_logger('ast-sac_logs', variant=variant)
 ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
 M = variant['layer_size']
 

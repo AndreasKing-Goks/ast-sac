@@ -301,13 +301,18 @@ def setup_logger(
         ) in git_infos:
             if directory[-1] == '/':
                 directory = directory[:-1]
+            ### OLD
             # diff_file_name = directory[1:].replace("/", "-") + ".patch"
             # diff_staged_file_name = (
             #     directory[1:].replace("/", "-") + "_staged.patch"
             # )
-            sanitized = sub(r'[^a-zA-Z0-9_\-\.]', '_', directory)
-            diff_file_name = sanitized + ".patch"
-            diff_staged_file_name = sanitized + "_staged.patch" 
+            ### NEW
+            # sanitized = sub(r'[^a-zA-Z0-9_\-\.]', '_', directory)
+            # diff_file_name = sanitized + ".patch"
+            # diff_staged_file_name = sanitized + "_staged.patch" 
+            ### PERSONALIZED
+            diff_file_name = "ast-sac_code_diff.patch"
+            diff_staged_file_name = "ast-sac_code_diff_staged.patch"
             if code_diff is not None and len(code_diff) > 0:
                 with open(osp.join(log_dir, diff_file_name), "w", encoding="utf-8") as f:
                     f.write(code_diff + '\n')
