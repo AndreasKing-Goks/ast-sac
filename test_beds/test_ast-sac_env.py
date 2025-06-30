@@ -520,47 +520,51 @@ replay_buffer = EnvReplayBuffer(
 #     plt.show()
 # print('-------------------------------------------------')
 
-# # Move the policy model to the correct device (e.g., GPU if available)
-# # This ensures all model parameters are on the same device as the input tensor
-# policy.to(ptu.device)
+# Move the policy model to the correct device (e.g., GPU if available)
+# This ensures all model parameters are on the same device as the input tensor
+policy.to(ptu.device)
 
-# # Sample a random observation from the environment’s observation space
-# # This gives a NumPy array sampled uniformly from the valid bounds
-# sampled_obsv = expl_env.wrapped_env.observation_space.sample()
+# Sample a random observation from the environment’s observation space
+# This gives a NumPy array sampled uniformly from the valid bounds
+sampled_obsv = expl_env.wrapped_env.observation_space.sample()
 
-# # Convert the NumPy observation into a PyTorch tensor
-# sampled_obsv = ptu.from_numpy(sampled_obsv)
+# Convert the NumPy observation into a PyTorch tensor
+sampled_obsv = ptu.from_numpy(sampled_obsv)
 
-# # Move the tensor to the same device as the policy (usually GPU)
-# sampled_obsv = sampled_obsv.to(ptu.device)
+# Move the tensor to the same device as the policy (usually GPU)
+sampled_obsv = sampled_obsv.to(ptu.device)
 
-# # Display the sampled observation tensor
-# print('Sampled observation from normalized env: \n', sampled_obsv)
+# Display the sampled observation tensor
+print('Sampled observation from normalized env: \n', sampled_obsv)
 
-# # Use the policy to sample an action based on the observation
-# # The policy expects NumPy input, so we convert the tensor back to NumPy
-# action = policy.get_action(ptu.get_numpy(sampled_obsv))
+# Use the policy to sample an action based on the observation
+# The policy expects NumPy input, so we convert the tensor back to NumPy
+action = policy.get_action(ptu.get_numpy(sampled_obsv))
 
-# # Print the sampled action (output of the policy)
-# print('Sampled action using policy:', action)
+# Print the sampled action (output of the policy)
+print('Sampled action using policy:', action)
 print('-------------------------------------------------')
 
 # Try resetting the environment with and without action
-sampled_obsv = expl_env.wrapped_env.initial_states
-# action = policy.get_action(ptu.get_numpy(sampled_obsv))
-# o = expl_env.reset()
-# o_waypoint_north = expl_env.obs.auto_pilot.navigate.north
-# o_waypoint_east = expl_env.obs.auto_pilot.navigate.east
-# owa = expl_env.reset()
-# owa_waypoint_north = expl_env.obs.auto_pilot.navigate.north
-# owa_waypoint_east = expl_env.obs.auto_pilot.navigate.east
+o = expl_env.reset()
+o = ptu.from_numpy(o).to(ptu.device)
+o_waypoint_north = expl_env.obs.auto_pilot.navigate.north
+o_waypoint_east = expl_env.obs.auto_pilot.navigate.east
 
-# print('Check if imediate route sampling during the init reset works')
-# print('Initial states w/o action  :\n', o)
-# print('North waypoints w/o action :', o_waypoint_north)
-# print('East waypoints w/o action  :', o_waypoint_east)
-# print('###')
-# print('Initial states w/ action   :\n', owa)
-# print('North waypoints w/ action  :', owa_waypoint_north)
-# print('East waypoints w/ action   :', owa_waypoint_east)
-# print('-------------------------------------------------')
+# Reset to get initial states, sample an action using initial states, then reinitiate again using sampled action
+owa = expl_env.reset()                          # First reset
+owa = ptu.from_numpy(owa).to(ptu.device)
+action = policy.get_action(ptu.get_numpy(owa))  # Get an action
+owa = expl_env.reset(action)                    # Second reset  
+owa_waypoint_north = expl_env.obs.auto_pilot.navigate.north
+owa_waypoint_east = expl_env.obs.auto_pilot.navigate.east
+
+print('Check if imediate route sampling during the init reset works')
+print('Initial states w/o action  :\n', o)
+print('North waypoints w/o action :', o_waypoint_north)
+print('East waypoints w/o action  :', o_waypoint_east)
+print('###')
+print('Initial states w/ action   :\n', owa)
+print('North waypoints w/ action  :', owa_waypoint_north)
+print('East waypoints w/ action   :', owa_waypoint_east)
+print('-------------------------------------------------')

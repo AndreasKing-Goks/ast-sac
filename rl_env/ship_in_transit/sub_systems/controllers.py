@@ -378,8 +378,8 @@ class HeadingBySampledRouteController:
         # Get the route shifts and update the new route
         IW_n, IW_e = intermediate_waypoints
         
-        self.navigate.north.insert(-1, float(IW_n))
-        self.navigate.east.insert(-1, float(IW_e))
+        self.navigate.north.insert(-1, IW_n)
+        self.navigate.east.insert(-1, IW_e)
         
 
     def rudder_angle_from_sampled_route(self, north_position, east_position, heading, desired_heading_offset=0.0):

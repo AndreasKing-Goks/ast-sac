@@ -170,8 +170,9 @@ class MultiShipRLEnv(Env):
         
         **ALWAYS takes the unormalized action**
         '''
-        # Unpcak the action (It is a 1D vector)
-        scoping_angle =  action.item() # Chi
+        # Unpack the action and get the scoping angle \Chi (It is a 1D vector)
+        # scoping_angle =  action 
+        scoping_angle = action[0][0]  # ----> UNIQUE IMPLEMENTATION FOR HAARNOJA ACTION
         
         # Compute n_s and e_s
         # self.omega = (np.pi/2 - self.AB_beta)
@@ -196,7 +197,7 @@ class MultiShipRLEnv(Env):
         self.e_base = self.obs.auto_pilot.navigate.east[0] + (self.AB_east_segment_length * next_segment_factor) + self.e_s
         
         # Repack into simulation input
-        intermediate_waypoints = [route_coord_n, route_coord_e]
+        intermediate_waypoints = [(route_coord_n), route_coord_e]
         
         return intermediate_waypoints
     

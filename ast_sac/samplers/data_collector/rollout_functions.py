@@ -93,6 +93,7 @@ def ast_sac_rollout(
     rewards = []
     terminals = []
     dones = []
+    agent_infos = []
     env_infos = []
     next_observations = []
     path_length = 0
@@ -113,7 +114,7 @@ def ast_sac_rollout(
     while path_length < max_path_length:
         # Get the action (NEED and ocassional sampling given a flag)
         # But at initial step, agent directly samples intermediate waypoint
-        a = agent.get_action(o, **get_action_kwargs)
+        a, agent_info = agent.get_action(o, **get_action_kwargs)
 
         # NOT USED
         if full_o_postprocess_func:
@@ -140,6 +141,7 @@ def ast_sac_rollout(
         dones.append(done)
         actions.append(a)
         next_observations.append(next_o)
+        agent_infos.append(agent_info)
         env_infos.append(env_info)
         path_length += 1
         
@@ -167,6 +169,7 @@ def ast_sac_rollout(
         next_observations=next_observations,
         terminals=np.array(terminals).reshape(-1, 1),
         dones=np.array(dones).reshape(-1, 1),
+        agent_infos=agent_infos,
         env_infos=env_infos,
     )
 
