@@ -539,7 +539,7 @@ print('Sampled observation from normalized env: \n', sampled_obsv)
 
 # Use the policy to sample an action based on the observation
 # The policy expects NumPy input, so we convert the tensor back to NumPy
-action = policy.get_action(ptu.get_numpy(sampled_obsv))
+action, _ = policy.get_action(ptu.get_numpy(sampled_obsv))
 
 # Print the sampled action (output of the policy)
 print('Sampled action using policy:', action)
@@ -556,7 +556,7 @@ o_waypoint_east = expl_env.obs.auto_pilot.navigate.east
 # Reset to get initial states, sample an action using initial states, then reinitiate again using sampled action
 owa = expl_env.reset()                          # First reset
 owa = ptu.from_numpy(owa).to(ptu.device)
-action = policy.get_action(ptu.get_numpy(owa))  # Get an action
+action, _ = policy.get_action(ptu.get_numpy(owa))  # Get an action
 print('Sampling count before new reset:', expl_env.wrapped_env.sampling_count)
 owa = expl_env.reset(action)                    # Second reset  
 owa = ptu.from_numpy(owa).to(ptu.device)
