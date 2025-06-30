@@ -17,8 +17,8 @@ class SBMPCParams:
     PHI_HO_: float = np.deg2rad(22.5)  # colregs angle -  head on [deg]
     PHI_CR_: float = np.deg2rad(68.5)  # colregs angle -  crossing [deg]
     KAPPA_: float = 0.0 # 10.0  # Weight for cost of COLREGs compliance (Rules 14 & 15, if both are satisfied it implies 13 is also satisfied)
-    K_P_: float = 25  # Weight for penalizing speed offset
-    K_CHI_: float = 30  # Weight for penalizing heading offset
+    K_P_: float = 25  # Weight for penalizing speed offset      # PLAY WITH THIS
+    K_CHI_: float = 30  # Weight for penalizing heading offset  # PLAY WITH THIS
     K_DP_: float = 20  # Weight for penalizing changes in speed offset
     K_DCHI_SB_: float = 20  # Weight for penalizing changes in heading offset in StarBoard situation
     K_DCHI_P_: float = 30  # Weight for penalizing changes in heading offset in Port situation
@@ -30,7 +30,7 @@ class SBMPCParams:
 
     Chi_ca_: np.array = field(
         default_factory=lambda: np.deg2rad(
-            np.array([-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0])
+            np.array([-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0]) # Increase the up and down  boundary to make it more aggressive
         )
     )  # control behaviors - course offset [deg]
     P_ca_: np.array = field(default_factory=lambda: np.array([0.4, 0.6, 0.8, 1.0]))  # control behaviors - speed factor

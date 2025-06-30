@@ -54,6 +54,12 @@ class NormalizedBoxEnv(ProxyEnv):
         if self._should_normalize:
             next_obs = self._apply_normalize_obs(next_obs)
         return next_obs, reward * self._reward_scale, done, info
+    
+    def reset(self, 
+              action=None):
+        observations = self._wrapped_env.reset(action)
+        return observations
+        
 
     def __str__(self):
         return "Normalized: %s" % self._wrapped_env

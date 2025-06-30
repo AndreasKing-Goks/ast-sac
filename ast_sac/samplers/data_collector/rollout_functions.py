@@ -75,12 +75,11 @@ def ast_sac_rollout(
         render_kwargs=None,
         preprocess_obs_for_policy_fn=None,
         get_action_kwargs=None,
-        return_dict_obs=False,
         full_o_postprocess_func=None,
         reset_callback=None,
 ):
     '''
-    Custom rollout function specific for AST-SAC
+    Custom rollout function specific for AST-SAC algorithm
     '''
     if render_kwargs is None:
         render_kwargs = {}
@@ -88,59 +87,79 @@ def ast_sac_rollout(
         get_action_kwargs = {}
     if preprocess_obs_for_policy_fn is None:
         preprocess_obs_for_policy_fn = lambda x: x
+    # Set up containers and path counters
     observations = []
     actions = []
     rewards = []
     terminals = []
     dones = []
-    agent_infos = []
     env_infos = []
     next_observations = []
     path_length = 0
+    
+    # Reset the agent
     agent.reset()
+    
+    # Reset the environment then 
     o = env.reset()
     if reset_callback:
         reset_callback(env, agent, o)
+        
+    # NOT USED (Render before action)
     if render:
         env.render(**render_kwargs)
+    
+    # Do the path collecting
     while path_length < max_path_length:
-        a, agent_info = agent.get_action(o, **get_action_kwargs)
+        # Get the action (NEED and ocassional sampling given a flag)
+        # But at initial step, agent directly samples intermediate waypoint
+        a = agent.get_action(o, **get_action_kwargs)
 
+        # NOT USED
         if full_o_postprocess_func:
             full_o_postprocess_func(env, agent, o)
 
+        # Step the environment
         next_o, r, done, env_info = env.step(copy.deepcopy(a))
+
+        # NOT USED (Render after action)
         if render:
             env.render(**render_kwargs)
+            
+        # Add observation to container
         observations.append(o)
+        
+        # Add reward to the container
         rewards.append(r)
-        terminal = False
-        if done:
-            # terminal=False if TimeLimit caused termination
-            if not env_info.pop('TimeLimit.truncated', False):
-                terminal = True
+        
+        # Get the terminal flags
+        terminal = env_info['terminal']
+                
+        # Append the containers with the obtained step results
         terminals.append(terminal)
         dones.append(done)
         actions.append(a)
         next_observations.append(next_o)
-        raw_next_obs.append(next_o)
-        agent_infos.append(agent_info)
         env_infos.append(env_info)
         path_length += 1
+        
         if done:
             break
         o = next_o
+        
+    # Turn the containers to numpy array
     actions = np.array(actions)
     if len(actions.shape) == 1:
         actions = np.expand_dims(actions, 1)
     observations = np.array(observations)
     next_observations = np.array(next_observations)
-    if return_dict_obs:
-        observations = raw_obs
-        next_observations = raw_next_obs
     rewards = np.array(rewards)
+    
+    # Reshape rewards for batch processing 
+    # Reshape 1D reward array into a 2D column vector with shape (N,1), where the N is the number
     if len(rewards.shape) == 1:
         rewards = rewards.reshape(-1, 1)
+        
     return dict(
         observations=observations,
         actions=actions,
@@ -148,10 +167,7 @@ def ast_sac_rollout(
         next_observations=next_observations,
         terminals=np.array(terminals).reshape(-1, 1),
         dones=np.array(dones).reshape(-1, 1),
-        agent_infos=agent_infos,
         env_infos=env_infos,
-        full_observations=raw_obs,
-        full_next_observations=raw_obs,
     )
 
 
