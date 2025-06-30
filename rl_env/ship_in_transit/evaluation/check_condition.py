@@ -203,3 +203,11 @@ def is_reach_radius_of_acceptance(obs_obj,
         
     is_reach_roa =  dist_to_next_route < r_o_a**2
     return is_reach_roa 
+
+def is_within_simu_time_limit(asset):
+    '''
+    Check if the simulation time is within the allowed simulation time limit
+    '''
+    is_within_time_limit = asset.ship_model.int.time < asset.ship_model.int.sim_time
+    
+    return is_within_time_limit

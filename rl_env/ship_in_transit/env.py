@@ -605,7 +605,7 @@ class MultiShipRLEnv(Env):
         # Set up container
         accumulated_reward = 0
         
-        # If reaching RoA, do stepping with action
+        # If reaching RoA, not done, and within simulation time limit do stepping with action
         # If not, just step the simulator
         while not is_reach_roa and not combined_done:
             # Step up the simulator

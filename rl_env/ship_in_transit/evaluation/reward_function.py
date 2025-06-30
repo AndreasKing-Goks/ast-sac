@@ -19,7 +19,8 @@ from rl_env.ship_in_transit.evaluation.check_condition import (is_reaches_endpoi
                                                                is_collision_imminent,
                                                                is_ship_collision,
                                                                is_sample_travel_dist_too_far,
-                                                               is_sample_travel_time_too_long)
+                                                               is_sample_travel_time_too_long,
+                                                               is_within_simu_time_limit)
 from rl_env.ship_in_transit.utils.compute_distance import (get_distance,
                                                            get_distance_and_true_encounter_type, 
                                                            get_distance_and_encounter_type)
@@ -158,6 +159,7 @@ def get_reward_and_env_info(env_args,
     # Obstacle ship reaches endpoint or goes outside the map
     termination_9 = is_reaches_endpoint(obs_route_end, obs_pos)
     termination_10 = is_pos_outside_horizon(map_obj, obs_pos, obs_ship_length)
+    termination_11 = is_within_simu_time_limit(test) # Following ship under test
     
     # Track the reward evolution
     reward_log.update(r_ship_collision / normalizing_factor,
@@ -223,6 +225,11 @@ def get_reward_and_env_info(env_args,
         env_info['events'].append('Obstacle ship goes outside the map horizon!')
         env_info['terminal'] = False
         env_info['test_ship_stop'] = False
+        env_info['obs_ship_stop'] = True
+    if termination_11:
+        env_info['events'].append('Simulation reaches its time limit')
+        env_info['terminal'] = False
+        env_info['test_ship_stop'] = True
         env_info['obs_ship_stop'] = True
     
     return r_total, env_info

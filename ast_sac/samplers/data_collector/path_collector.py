@@ -5,7 +5,7 @@ import numpy as np
 
 from ast_sac.core.eval_util import create_stats_ordered_dict
 from ast_sac.samplers.data_collector.base import PathCollector
-from ast_sac.samplers.data_collector.rollout_functions import rollout
+from ast_sac.samplers.data_collector.rollout_functions import rollout, ast_sac_rollout
 
 class MdpPathCollector(PathCollector):
     def __init__(
@@ -15,7 +15,7 @@ class MdpPathCollector(PathCollector):
             max_num_epoch_paths_saved=None,
             render=False,
             render_kwargs=None,
-            rollout_fn=rollout,
+            rollout_fn=ast_sac_rollout, #rollout,
             save_env_in_snapshot=True,
     ):
         if render_kwargs is None:
