@@ -433,92 +433,92 @@ replay_buffer = EnvReplayBuffer(
 # algorithm.to(ptu.device)
 # algorithm.train()
 
-# print('-------------------------------------------------')
+print('-------------------------------------------------')
 
-# # Check normalized box env
-# action_space_lo = env.action_space.low
-# print('Basic env:', action_space_lo)
-# action_space_norm_lo = expl_env.action_space.low
-# print('Normalized box env:', action_space_norm_lo)
-# print('-------------------------------------------------')
+# Check normalized box env
+action_space_lo = env.action_space.low
+print('Basic env:', action_space_lo)
+action_space_norm_lo = expl_env.action_space.low
+print('Normalized box env:', action_space_norm_lo)
+print('-------------------------------------------------')
 
-# # Check the sampling
-# action = env.action_space.sample()
-# print('Basic env:', action)
-# action_norm = expl_env.action_space.sample()
-# print('Normalized box env:', action_norm)
-# print('-------------------------------------------------')
+# Check the sampling
+action = env.action_space.sample()
+print('Basic env:', action)
+action_norm = expl_env.action_space.sample()
+print('Normalized box env:', action_norm)
+print('-------------------------------------------------')
 
-# # Check for getting intermediate waypoints based on sampled action
-# # Do it 4 times
-# intermediate_waypoint_list = []
+# Check for getting intermediate waypoints based on sampled action
+# Do it 4 times
+intermediate_waypoint_list = []
 
-# action = env.action_space.sample()
-# print('scoping angle 1 in degree:', np.rad2deg(action.item()))
-# intermediate_waypoint = env.get_intermediate_waypoints(action)
-# intermediate_waypoint_list.append(intermediate_waypoint)
-# env.sampling_count += 1
-# print('IW1:', intermediate_waypoint)
+action = env.action_space.sample()
+print('scoping angle 1 in degree:', np.rad2deg(action[0]))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW1:', intermediate_waypoint)
 
-# action = env.action_space.sample()
-# print('scoping angle 2 in degree:', np.rad2deg(action.item()))
-# intermediate_waypoint = env.get_intermediate_waypoints(action)
-# intermediate_waypoint_list.append(intermediate_waypoint)
-# env.sampling_count += 1
-# print('IW2:', intermediate_waypoint)
+action = env.action_space.sample()
+print('scoping angle 2 in degree:', np.rad2deg(action[0]))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW2:', intermediate_waypoint)
 
-# action = env.action_space.sample()
-# print('scoping angle 3 in degree:', np.rad2deg(action.item()))
-# intermediate_waypoint = env.get_intermediate_waypoints(action)
-# intermediate_waypoint_list.append(intermediate_waypoint)
-# env.sampling_count += 1
-# print('IW3:', intermediate_waypoint)
+action = env.action_space.sample()
+print('scoping angle 3 in degree:', np.rad2deg(action[0]))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW3:', intermediate_waypoint)
 
-# action = env.action_space.sample()
-# print('scoping angle 4 in degree:', np.rad2deg(action.item()))
-# intermediate_waypoint = env.get_intermediate_waypoints(action)
-# intermediate_waypoint_list.append(intermediate_waypoint)
-# env.sampling_count += 1
-# print('IW4:', intermediate_waypoint)
+action = env.action_space.sample()
+print('scoping angle 4 in degree:', np.rad2deg(action[0]))
+intermediate_waypoint = env.get_intermediate_waypoints(action)
+intermediate_waypoint_list.append(intermediate_waypoint)
+env.sampling_count += 1
+print('IW4:', intermediate_waypoint)
 
-# # Plot the points
-# obs_route_n_start = obs.auto_pilot.navigate.north[0]
-# obs_route_e_start = obs.auto_pilot.navigate.east[0]
-# obs_route_n_end = obs.auto_pilot.navigate.north[-1]
-# obs_route_e_end = obs.auto_pilot.navigate.east[-1]
-# obs_route_end = [np.float64(obs_route_n_end), np.float64(obs_route_e_end)]
-# obs_route_start = [np.float64(obs_route_n_start), np.float64(obs_route_e_start)]
+# Plot the points
+obs_route_n_start = obs.auto_pilot.navigate.north[0]
+obs_route_e_start = obs.auto_pilot.navigate.east[0]
+obs_route_n_end = obs.auto_pilot.navigate.north[-1]
+obs_route_e_end = obs.auto_pilot.navigate.east[-1]
+obs_route_end = [np.float64(obs_route_n_end), np.float64(obs_route_e_end)]
+obs_route_start = [np.float64(obs_route_n_start), np.float64(obs_route_e_start)]
 
-# intermediate_waypoint_list.insert(0, obs_route_start)
-# intermediate_waypoint_list.append(obs_route_end)
+intermediate_waypoint_list.insert(0, obs_route_start)
+intermediate_waypoint_list.append(obs_route_end)
 
-# north_list, east_list = zip(*intermediate_waypoint_list)
+north_list, east_list = zip(*intermediate_waypoint_list)
 
-# # Create the figure
-# plot=False
-# # plot=True
-# if plot:
-#     plt.figure(figsize=(8, 6))
-#     plt.scatter(east_list, north_list, color='red', label='Sampled Waypoints')
-#     plt.plot(east_list, north_list, linestyle='--', color='gray', label='Waypoint Path')
+# Create the figure
+plot=False
+plot=True
+if plot:
+    plt.figure(figsize=(8, 6))
+    plt.scatter(east_list, north_list, color='red', label='Sampled Waypoints')
+    plt.plot(east_list, north_list, linestyle='--', color='gray', label='Waypoint Path')
 
-#     # Annotate each point with its index
-#     for idx, (e, n) in enumerate(zip(east_list, north_list)):
-#         plt.text(e, n, f'{idx}', fontsize=10, ha='right', va='bottom')
+    # Annotate each point with its index
+    for idx, (e, n) in enumerate(zip(east_list, north_list)):
+        plt.text(e, n, f'{idx}', fontsize=10, ha='right', va='bottom')
 
-#     # Label and style
-#     map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
-#     plt.xlim(0, 20000)
-#     plt.ylim(0, 10000)
-#     plt.xlabel('East position (m)')
-#     plt.ylabel('North position (m)')
-#     plt.title('Intermediate Waypoints with Indices')
-#     plt.gca().set_aspect('equal')
-#     plt.grid(color='0.8', linestyle='-', linewidth=0.5)
-#     plt.legend()
-#     plt.tight_layout()
-#     plt.show()
-# print('-------------------------------------------------')
+    # Label and style
+    map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+    plt.xlim(0, 20000)
+    plt.ylim(0, 10000)
+    plt.xlabel('East position (m)')
+    plt.ylabel('North position (m)')
+    plt.title('Intermediate Waypoints with Indices')
+    plt.gca().set_aspect('equal')
+    plt.grid(color='0.8', linestyle='-', linewidth=0.5)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+print('-------------------------------------------------')
 
 # Move the policy model to the correct device (e.g., GPU if available)
 # This ensures all model parameters are on the same device as the input tensor
@@ -546,7 +546,9 @@ print('Sampled action using policy:', action)
 print('-------------------------------------------------')
 
 # Try resetting the environment with and without action
+print('Sampling count before old reset:', expl_env.wrapped_env.sampling_count)
 o = expl_env.reset()
+print('Sampling count after old reset :', expl_env.wrapped_env.sampling_count)
 o = ptu.from_numpy(o).to(ptu.device)
 o_waypoint_north = expl_env.obs.auto_pilot.navigate.north
 o_waypoint_east = expl_env.obs.auto_pilot.navigate.east
@@ -555,7 +557,10 @@ o_waypoint_east = expl_env.obs.auto_pilot.navigate.east
 owa = expl_env.reset()                          # First reset
 owa = ptu.from_numpy(owa).to(ptu.device)
 action = policy.get_action(ptu.get_numpy(owa))  # Get an action
+print('Sampling count before new reset:', expl_env.wrapped_env.sampling_count)
 owa = expl_env.reset(action)                    # Second reset  
+owa = ptu.from_numpy(owa).to(ptu.device)
+print('Sampling count after new reset :', expl_env.wrapped_env.sampling_count)
 owa_waypoint_north = expl_env.obs.auto_pilot.navigate.north
 owa_waypoint_east = expl_env.obs.auto_pilot.navigate.east
 

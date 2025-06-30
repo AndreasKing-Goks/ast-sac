@@ -172,7 +172,7 @@ class MultiShipRLEnv(Env):
         '''
         # Unpack the action and get the scoping angle \Chi (It is a 1D vector)
         # scoping_angle =  action 
-        scoping_angle = action[0][0]  # ----> UNIQUE IMPLEMENTATION FOR HAARNOJA ACTION
+        scoping_angle = action[0]  # ----> UNIQUE IMPLEMENTATION FOR HAARNOJA ACTION
         
         # Compute n_s and e_s
         # self.omega = (np.pi/2 - self.AB_beta)
