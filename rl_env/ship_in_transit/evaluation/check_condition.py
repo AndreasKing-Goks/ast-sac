@@ -196,7 +196,6 @@ def is_reach_radius_of_acceptance(obs_obj,
     
     # Get the latest waypoint update
     next_wpt = obs_nav.next_wpt
-    print(next_wpt)
         
     # Compute the distance to the next route
     dist_to_next_route = (n_pos - obs_nav.navigate.north[next_wpt])**2 + \

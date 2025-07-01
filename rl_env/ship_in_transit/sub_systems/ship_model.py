@@ -439,12 +439,12 @@ class BaseShipModel:
         self.wind_speed = self.environment_config.wind_speed
 
         # Initialize states
-        self.north = self.simulation_config.initial_north_position_m
-        self.east = self.simulation_config.initial_east_position_m
-        self.yaw_angle = self.simulation_config.initial_yaw_angle_rad
-        self.forward_speed = self.simulation_config.initial_forward_speed_m_per_s
-        self.sideways_speed = self.simulation_config.initial_sideways_speed_m_per_s
-        self.yaw_rate = self.simulation_config.initial_yaw_rate_rad_per_s
+        self.north = np.float64(self.simulation_config.initial_north_position_m)
+        self.east = np.float64(self.simulation_config.initial_east_position_m)
+        self.yaw_angle = np.float64(self.simulation_config.initial_yaw_angle_rad)
+        self.forward_speed = np.float64(self.simulation_config.initial_forward_speed_m_per_s)
+        self.sideways_speed = np.float64(self.simulation_config.initial_sideways_speed_m_per_s)
+        self.yaw_rate = np.float64(self.simulation_config.initial_yaw_rate_rad_per_s)
 
         # Initialize differentials
         self.d_north = 0

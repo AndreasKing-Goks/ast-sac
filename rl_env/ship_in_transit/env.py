@@ -197,7 +197,7 @@ class MultiShipRLEnv(Env):
         self.e_base = self.obs.auto_pilot.navigate.east[0] + (self.AB_east_segment_length * next_segment_factor) + self.e_s
         
         # Repack into simulation input
-        intermediate_waypoints = [(route_coord_n), route_coord_e]
+        intermediate_waypoints = [route_coord_n, route_coord_e]
         
         return intermediate_waypoints
     
@@ -586,7 +586,7 @@ class MultiShipRLEnv(Env):
         
         if obs_ship_stop:
             self.obs.stop_flag = True
-            
+        
         combined_done = terminal or done
         
         return next_states, reward, combined_done, env_info
