@@ -175,7 +175,7 @@ def get_reward_and_env_info(env_args,
         'events'            : [],
         'terminal'          : False,
         'test_ship_stop'    : False,
-        'obstacle_ship_stop': False,
+        'obs_ship_stop'     : False,
     }
     if termination_1:
         env_info['events'].append('Ships collision!')
