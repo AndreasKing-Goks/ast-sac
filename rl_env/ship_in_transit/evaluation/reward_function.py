@@ -88,22 +88,20 @@ def get_reward_and_env_info(env_args,
         test_to_obs_distance, encounter_type = get_distance_and_encounter_type(test_pos, 
                                                                                test_heading, 
                                                                                obs_pos, 
-                                                                               obs_pos, 
                                                                                obs_heading)
     else:
         test_to_obs_distance, encounter_type = get_distance_and_true_encounter_type(test_pos, 
                                                                                     test_heading, 
-                                                                                    obs_pos, 
-                                                                                    obs_pos, 
+                                                                                    obs_pos,
                                                                                     obs_heading)
     is_collision =  is_ship_collision(test_pos, obs_pos)    
     
     # Ship under test to ground distance and grounding flag
-    test_to_ground_distance = map_obj.obstacle_distance(test_pos[0], test_pos[1])
+    test_to_ground_distance = map_obj.obstacles_distance(test_pos[0], test_pos[1])
     is_test_grounding = is_pos_inside_obstacles(map_obj, test_pos, test_ship_length)
     
     # Obstacle ship to ground distance and grounding flag
-    obs_to_ground_distance = map_obj.obstacle_distance(obs_pos[0], obs_pos[1])
+    obs_to_ground_distance = map_obj.obstacles_distance(obs_pos[0], obs_pos[1])
     is_obs_grounding = is_pos_inside_obstacles(map_obj, obs_pos, obs_ship_length)
     
     # Get navigation failure flags for both ship under test and obstacle ship
@@ -111,9 +109,12 @@ def get_reward_and_env_info(env_args,
                                is_sample_travel_time_too_long(travel_time)])
     is_obs_nav_failure = is_ship_navigation_failure(obs_e_ct)
     
-    # Get te false intermediate waypoint sampling
-    is_sampling_failure = any([is_route_inside_obstacles(intermediate_waypoints),
-                               is_route_outside_horizon(map_obj, intermediate_waypoints)])
+    # Get te false intermediate waypoint sampling, only during action sampling phase
+    if intermediate_waypoints:
+        is_sampling_failure = any([is_route_inside_obstacles(intermediate_waypoints),
+                                   is_route_outside_horizon(map_obj, intermediate_waypoints)])
+    else:
+        is_sampling_failure = False
     
     # Compute ships collision reward. Get the termination status
     r_ship_collision, termination_1 = ships_collision_reward(test_to_obs_distance, encounter_type, is_collision)

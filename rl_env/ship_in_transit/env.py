@@ -275,6 +275,12 @@ class MultiShipRLEnv(Env):
                 measured_shaft_speed = forward_speed
             )
             
+            # Store simulation data after init step
+            ship.ship_model.store_simulation_data(throttle, 
+                                                  rudder_angle,
+                                                  ship.auto_pilot.get_cross_track_error(),
+                                                  ship.auto_pilot.get_heading_error())
+            
             # Step
             ship.ship_model.update_differentials(engine_throttle=throttle, rudder_angle=rudder_angle)
             ship.ship_model.integrate_differentials()
@@ -504,7 +510,7 @@ class MultiShipRLEnv(Env):
     def obs_ship_uses_scoping_angle(self, scoping_angle):
         # Update the sampling counter
         self.sampling_count += 1
-            
+        
         # Convert action into intermediate waypoints
         intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
             
@@ -564,7 +570,10 @@ class MultiShipRLEnv(Env):
         
         # Arguments for evaluation function
         env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
-        intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
+        if scoping_angle:
+            intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
+        else:
+            intermediate_waypoints = None
         
         # Get the reward, and the termination flags
         reward, env_info = get_reward_and_env_info(env_args, 

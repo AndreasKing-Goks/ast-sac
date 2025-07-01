@@ -32,7 +32,7 @@ class MdpPathCollector(PathCollector):
         self._num_paths_total = 0
 
         self._save_env_in_snapshot = save_env_in_snapshot
-
+    
     def collect_new_paths(
             self,
             max_path_length,

@@ -101,8 +101,9 @@ def ast_sac_rollout(
     # Reset the agent
     agent.reset()
     
-    # Reset the environment then 
+    # Reset the environment to get the initial satte
     o = env.reset()
+    
     if reset_callback:
         reset_callback(env, agent, o)
         

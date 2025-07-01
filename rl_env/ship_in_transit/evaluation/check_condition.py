@@ -192,14 +192,15 @@ def is_reach_radius_of_acceptance(obs_obj,
     # use obs.autopilot.navigate
     # - obs.autopilot.navigate.next_wpt for the latest waypoint index
     # - obs.autopilot.navigate.north / obs.autopilot.navigate.east for the waypoint lists
-    obs_nav = obs_obj.auto_pilot.navigate
+    obs_nav = obs_obj.auto_pilot
     
     # Get the latest waypoint update
     next_wpt = obs_nav.next_wpt
+    print(next_wpt)
         
     # Compute the distance to the next route
-    dist_to_next_route = (n_pos - obs_nav.north[next_wpt])**2 + \
-                         (e_pos - obs_nav.east[next_wpt])**2
+    dist_to_next_route = (n_pos - obs_nav.navigate.north[next_wpt])**2 + \
+                         (e_pos - obs_nav.navigate.east[next_wpt])**2
         
     is_reach_roa =  dist_to_next_route < r_o_a**2
     return is_reach_roa 
