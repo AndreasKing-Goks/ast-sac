@@ -189,56 +189,80 @@ def get_reward_and_env_info(env_args,
         'test_ship_stop'    : False,
         'obs_ship_stop'     : False,
     }
+    
+    # Initialize log containers
+    terminal_flags = []
+    test_ship_stop_flags = []
+    obs_ship_stop_flags = []
+
+    # Initialize event list
+    events = []
+
     if termination_1:
-        env_info['events'].append('Ships collision!')
-        env_info['terminal'] = True
-        env_info['test_ship_stop'] = True
-        env_info['obs_ship_stop'] = True
+        events.append('Ships collision!')
+        terminal_flags.append(True)
+        test_ship_stop_flags.append(True)
+        obs_ship_stop_flags.append(True)
+
     if termination_2:
-        env_info['events'].append('Ship under test experiences grounding!')
-        env_info['terminal'] = True
-        env_info['test_ship_stop'] = True
-        env_info['obs_ship_stop'] = False
+        events.append('Ship under test experiences grounding!')
+        terminal_flags.append(True)
+        test_ship_stop_flags.append(True)
+        obs_ship_stop_flags.append(False)
+
     if termination_3:
-        env_info['events'].append('Ship under test suffers navigational failure!')
-        env_info['terminal'] = True
-        env_info['test_ship_stop'] = True
-        env_info['obs_ship_stop'] = False
+        events.append('Ship under test suffers navigational failure!')
+        terminal_flags.append(True)
+        test_ship_stop_flags.append(True)
+        obs_ship_stop_flags.append(False)
+
     if termination_4:
-        env_info['events'].append('Obstacle ship experiences grounding!')
-        env_info['terminal'] = True
-        env_info['test_ship_stop'] = False
-        env_info['obs_ship_stop'] = True
+        events.append('Obstacle ship experiences grounding!')
+        terminal_flags.append(True)
+        test_ship_stop_flags.append(False)
+        obs_ship_stop_flags.append(True)
+
     if termination_5:
-        env_info['events'].append('Obstacle ship suffers navigational failure!')
-        env_info['terminal'] = True
-        env_info['test_ship_stop'] = False
-        env_info['obs_ship_stop'] = True
+        events.append('Obstacle ship suffers navigational failure!')
+        terminal_flags.append(True)
+        test_ship_stop_flags.append(False)
+        obs_ship_stop_flags.append(True)
+
     if termination_6:
-        env_info['events'].append('Ship under test reaches its final destination!')
-        env_info['terminal'] = False
-        env_info['test_ship_stop'] = True
-        env_info['obs_ship_stop'] = False
+        events.append('Ship under test reaches its final destination!')
+        terminal_flags.append(False)
+        test_ship_stop_flags.append(True)
+        obs_ship_stop_flags.append(False)
+
     if termination_7:
-        env_info['events'].append('Ship under test goes outside the map horizon!')
-        env_info['terminal'] = False
-        env_info['test_ship_stop'] = True
-        env_info['obs_ship_stop'] = False
+        events.append('Ship under test goes outside the map horizon!')
+        terminal_flags.append(False)
+        test_ship_stop_flags.append(True)
+        obs_ship_stop_flags.append(False)
+
     if termination_8:
-        env_info['events'].append('Obstacle ship reaches its final destination!')
-        env_info['terminal'] = False
-        env_info['test_ship_stop'] = False
-        env_info['obs_ship_stop'] = True
+        events.append('Obstacle ship reaches its final destination!')
+        terminal_flags.append(False)
+        test_ship_stop_flags.append(False)
+        obs_ship_stop_flags.append(True)
+
     if termination_9:
-        env_info['events'].append('Obstacle ship goes outside the map horizon!')
-        env_info['terminal'] = False
-        env_info['test_ship_stop'] = False
-        env_info['obs_ship_stop'] = True
+        events.append('Obstacle ship goes outside the map horizon!')
+        terminal_flags.append(False)
+        test_ship_stop_flags.append(False)
+        obs_ship_stop_flags.append(True)
+
     if termination_10:
-        env_info['events'].append('Simulation reaches its time limit')
-        env_info['terminal'] = False
-        env_info['test_ship_stop'] = True
-        env_info['obs_ship_stop'] = True
+        events.append('Simulation reaches its time limit')
+        terminal_flags.append(False)
+        test_ship_stop_flags.append(True)
+        obs_ship_stop_flags.append(True)
+
+    # Final assignment to env_info
+    env_info['events'] = events
+    env_info['terminal'] = np.any(terminal_flags)
+    env_info['test_ship_stop'] = np.any(test_ship_stop_flags)
+    env_info['obs_ship_stop'] = np.any(obs_ship_stop_flags)
     
     return r_total, env_info
     
