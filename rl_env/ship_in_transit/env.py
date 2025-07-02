@@ -196,7 +196,7 @@ class MultiShipRLEnv(Env):
         route_coord_e = self.e_base + self.e_s
         
         # Update new base for the next route coordinate
-        next_segment_factor = self.sampling_count + 1 
+        next_segment_factor = self.sampling_count + 2 
         self.n_base = self.obs.auto_pilot.navigate.north[0] + (self.AB_north_segment_length * next_segment_factor) + self.n_s
         self.e_base = self.obs.auto_pilot.navigate.east[0] + (self.AB_east_segment_length * next_segment_factor) + self.e_s
         
@@ -582,7 +582,6 @@ class MultiShipRLEnv(Env):
         # Arguments for evaluation function
         env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
         if scoping_angle:
-            print(scoping_angle)
             intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
         else:
             intermediate_waypoints = None

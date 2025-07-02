@@ -457,14 +457,14 @@ if test2:
     print('-------------------------------------------------')
 
 test3 = True
-test3 = False
+# test3 = False
 
 if test3:
     # Check for getting intermediate waypoints based on sampled action
     # Do it 4 times
     intermediate_waypoint_list = []
 
-    action = env.action_space.sample()
+    action = [np.deg2rad(0)]
     print('action 1 in degree:', action[0])
     print('scoping angle 1 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
@@ -472,7 +472,7 @@ if test3:
     env.sampling_count += 1
     print('IW1:', intermediate_waypoint)
 
-    action = env.action_space.sample()
+    action = [np.deg2rad(0)]
     print('action 2 in degree:', action[0])
     print('scoping angle 2 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
@@ -480,7 +480,7 @@ if test3:
     env.sampling_count += 1
     print('IW2:', intermediate_waypoint)
 
-    action = env.action_space.sample()
+    action = [np.deg2rad(0)]
     print('action 3 in degree:', action[0])
     print('scoping angle 3 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
@@ -488,7 +488,7 @@ if test3:
     env.sampling_count += 1
     print('IW3:', intermediate_waypoint)
 
-    action = env.action_space.sample()
+    action = [np.deg2rad(0)]
     print('action 4 in degree:', action[0])
     print('scoping angle 4 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
@@ -627,7 +627,7 @@ if test6:
     print('-------------------------------------------------')
 
 test7 = True
-# test7 = False
+test7 = False
 
 if test7:
     print('Test and plot step up behaviour')
@@ -636,22 +636,22 @@ if test7:
     policy.to(ptu.device)                                                                   # Sent policy networks to device
     
     action, _ = policy.get_action(init_observations)                                        # Get an action
-    print('First action', np.rad2deg(action))
+    print('First action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
                   
     action, _ = policy.get_action(next_observations)                                        # Get an action
-    print('Second action', np.rad2deg(action))
+    print('Second action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
     
     action, _ = policy.get_action(next_observations)                                        # Get an action
-    print('Third action', np.rad2deg(action))
+    print('Third action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
     
     action, _ = policy.get_action(next_observations)                                        # Get an action
-    print('Fourth action', np.rad2deg(action))
+    print('Fourth action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
 
@@ -661,6 +661,10 @@ if test7:
 
     # Get the time when the sampling begin, failure modes and the waypoints
     waypoint_sampling_times = expl_env.wrapped_env.waypoint_sampling_times
+    
+    # Print
+    print('')
+    print('---')
     print('Waypoint sampling time record:', waypoint_sampling_times)
     print('---')
     print('after step route north:', expl_env.obs.auto_pilot.navigate.north)
