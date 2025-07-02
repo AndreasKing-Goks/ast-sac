@@ -105,9 +105,12 @@ def get_reward_and_env_info(env_args,
     is_obs_grounding = is_pos_inside_obstacles(map_obj, obs_pos, obs_ship_length)
     
     # Get navigation failure flags for both ship under test and obstacle ship
-    is_test_nav_failure = any([is_sample_travel_dist_too_far(travel_dist, traj_segment_length),
-                               is_sample_travel_time_too_long(travel_time)])
-    is_obs_nav_failure = is_ship_navigation_failure(obs_e_ct)
+    test_e_ct_threshold = 1000
+    obs_e_ct_threshold  = 500
+    is_test_nav_failure = is_ship_navigation_failure(test_e_ct, e_tol=test_e_ct_threshold)
+    is_obs_nav_failure = any([is_sample_travel_dist_too_far(travel_dist, traj_segment_length),
+                              is_sample_travel_time_too_long(travel_time),
+                              is_ship_navigation_failure(obs_e_ct, e_tol=obs_e_ct_threshold)])
     
     # Get te false intermediate waypoint sampling, only during action sampling phase
     if intermediate_waypoints:
@@ -123,13 +126,17 @@ def get_reward_and_env_info(env_args,
     r_test_ship_grounding, termination_2 = test_ship_grounding_reward(test_to_ground_distance, is_test_grounding)
     
     # Compute test ship navigation failure reward. get the termination status
-    r_test_ship_nav_failure, termination_3 = test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure)
+    r_test_ship_nav_failure, termination_3 = test_ship_nav_failure_reward(test_e_ct, 
+                                                                          is_test_nav_failure,
+                                                                          e_ct_threshold=obs_e_ct_threshold)
     
     # Compute obstacle ship grounding reward. Get the termination status
     r_obs_ship_grounding, termination_4 = obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding)
     
     # Compute obstacle ship navigation failure reward. Get the termination status
-    r_obs_ship_nav_failure, termination_5 = obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure)
+    r_obs_ship_nav_failure, termination_5 = obs_ship_nav_failure_reward(obs_e_ct, 
+                                                                        is_obs_nav_failure, 
+                                                                        e_ct_threshold=obs_e_ct_threshold)
     
     # Evaluate all the non-terminal reward function first
     current_acc_reward_list = np.array([r_ship_collision, r_test_ship_grounding, 
@@ -313,8 +320,7 @@ def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold 
     - The reward is range between [0, 1]
     - We get a reward closer to 1 when the cross track error is closer to 1 km
     - The greater cross track error is, the higher the reward
-    - Navigation failure happens when the ship failed to reach the next waypoint after traversing for more than
-      (tolerance_coeff * AB_segment_length) distance.
+    - Navigation failure happens when the ship under test cross track error goes beyond 1 km
     - When navigation failure happens, terminate the simulator
     
     Note: Reward Design parameter is obtained by self tune process
@@ -372,7 +378,8 @@ def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 5
     - The reward is range between [-1, 0]
     - We get a reward closer to -1 when the cross track error is closer to 500 m
     - The greater cross track error is, the higher the reward
-    - Navigation failure happens when the obstacle ship cross track error goes beyond 500 m
+    - Navigation failure happens when the obstacle ship failed to reach the next waypoint after 
+      traversing for more than (tolerance_coeff * AB_segment_length) distance.
     - When navigation failure happens, terminate the simulator
     
     Note: Reward Design parameter is obtained by self tune process

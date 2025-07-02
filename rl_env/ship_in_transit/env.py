@@ -159,13 +159,13 @@ class MultiShipRLEnv(Env):
         '''
         Map real action to normalized [-1,1] space
         '''
-        return 2.0 * (a_real - self.real_low) / (self.real_high - self.real_low) - 1.0
+        return 2.0 * (a_real - self.action_space.low) / (self.action_space.high - self.action_space.low) - 1.0
     
     def denormalize_action(self, a_norm):
         '''
         Map normalized [-1,1] to real action space
         '''
-        return (a_norm + 1.0) / 2.0 * (self.real_high - self.real_low) + self.real_low
+        return (a_norm + 1.0) / 2.0 * (self.action_space.high - self.action_space.low) + self.action_space.low
     
     def get_intermediate_waypoints(self, action):
         '''

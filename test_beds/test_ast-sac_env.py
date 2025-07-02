@@ -465,6 +465,7 @@ if test3:
     intermediate_waypoint_list = []
 
     action = env.action_space.sample()
+    print('action 1 in degree:', action[0])
     print('scoping angle 1 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
@@ -472,6 +473,7 @@ if test3:
     print('IW1:', intermediate_waypoint)
 
     action = env.action_space.sample()
+    print('action 2 in degree:', action[0])
     print('scoping angle 2 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
@@ -479,6 +481,7 @@ if test3:
     print('IW2:', intermediate_waypoint)
 
     action = env.action_space.sample()
+    print('action 3 in degree:', action[0])
     print('scoping angle 3 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
@@ -486,6 +489,7 @@ if test3:
     print('IW3:', intermediate_waypoint)
 
     action = env.action_space.sample()
+    print('action 4 in degree:', action[0])
     print('scoping angle 4 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
@@ -507,7 +511,7 @@ if test3:
 
     # Create the figure
     plot=False
-    # plot=True
+    plot=True
     if plot:
         plt.figure(figsize=(8, 6))
         plt.scatter(east_list, north_list, color='red', label='Sampled Waypoints')
@@ -656,7 +660,7 @@ if test7:
 
     # Plot 2: Status plot
     plot_2 = False
-    plot_2 = True
+    # plot_2 = True
 
     # Create a No.2 3x4 grid for subplots
     if plot_2:
