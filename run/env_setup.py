@@ -8,7 +8,7 @@ from rl_env.ship_in_transit.sub_systems.controllers import ThrottleControllerGai
 from rl_env.ship_in_transit.utils.print_termination import print_termination
 
 ## IMPORT UTILS
-from utils.basic_animate import ShipTrajectoryAnimator
+from utils.animate import ShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 
 ## IMPORT TOOLS

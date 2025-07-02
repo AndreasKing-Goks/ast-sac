@@ -23,7 +23,7 @@ from ast_sac.torch.sac.sac import SACTrainer
 from ast_sac.torch.networks.mlp import ConcatMlp
 from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
-from utils.basic_animate import ShipTrajectoryAnimator
+from utils.animate import ShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 from utils.center_plot import center_plot_window
 
@@ -433,181 +433,392 @@ replay_buffer = EnvReplayBuffer(
 # algorithm.to(ptu.device)
 # algorithm.train()
 
-print('-------------------------------------------------')
-
-# Check normalized box env
-action_space_lo = env.action_space.low
-print('Basic env:', action_space_lo)
-action_space_norm_lo = expl_env.action_space.low
-print('Normalized box env:', action_space_norm_lo)
-print('-------------------------------------------------')
-
-# Check the sampling
-action = env.action_space.sample()
-print('Basic env:', action)
-action_norm = expl_env.action_space.sample()
-print('Normalized box env:', action_norm)
-print('-------------------------------------------------')
-
-# Check for getting intermediate waypoints based on sampled action
-# Do it 4 times
-intermediate_waypoint_list = []
-
-action = env.action_space.sample()
-print('scoping angle 1 in degree:', np.rad2deg(action[0]))
-intermediate_waypoint = env.get_intermediate_waypoints(action)
-intermediate_waypoint_list.append(intermediate_waypoint)
-env.sampling_count += 1
-print('IW1:', intermediate_waypoint)
-
-action = env.action_space.sample()
-print('scoping angle 2 in degree:', np.rad2deg(action[0]))
-intermediate_waypoint = env.get_intermediate_waypoints(action)
-intermediate_waypoint_list.append(intermediate_waypoint)
-env.sampling_count += 1
-print('IW2:', intermediate_waypoint)
-
-action = env.action_space.sample()
-print('scoping angle 3 in degree:', np.rad2deg(action[0]))
-intermediate_waypoint = env.get_intermediate_waypoints(action)
-intermediate_waypoint_list.append(intermediate_waypoint)
-env.sampling_count += 1
-print('IW3:', intermediate_waypoint)
-
-action = env.action_space.sample()
-print('scoping angle 4 in degree:', np.rad2deg(action[0]))
-intermediate_waypoint = env.get_intermediate_waypoints(action)
-intermediate_waypoint_list.append(intermediate_waypoint)
-env.sampling_count += 1
-print('IW4:', intermediate_waypoint)
-
-# Plot the points
-obs_route_n_start = obs.auto_pilot.navigate.north[0]
-obs_route_e_start = obs.auto_pilot.navigate.east[0]
-obs_route_n_end = obs.auto_pilot.navigate.north[-1]
-obs_route_e_end = obs.auto_pilot.navigate.east[-1]
-obs_route_end = [np.float64(obs_route_n_end), np.float64(obs_route_e_end)]
-obs_route_start = [np.float64(obs_route_n_start), np.float64(obs_route_e_start)]
-
-intermediate_waypoint_list.insert(0, obs_route_start)
-intermediate_waypoint_list.append(obs_route_end)
-
-north_list, east_list = zip(*intermediate_waypoint_list)
-
-# Create the figure
-plot=False
-# plot=True
-if plot:
-    plt.figure(figsize=(8, 6))
-    plt.scatter(east_list, north_list, color='red', label='Sampled Waypoints')
-    plt.plot(east_list, north_list, linestyle='--', color='gray', label='Waypoint Path')
-
-    # Annotate each point with its index
-    for idx, (e, n) in enumerate(zip(east_list, north_list)):
-        plt.text(e, n, f'{idx}', fontsize=10, ha='right', va='bottom')
-
-    # Label and style
-    map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
-    plt.xlim(0, 20000)
-    plt.ylim(0, 10000)
-    plt.xlabel('East position (m)')
-    plt.ylabel('North position (m)')
-    plt.title('Intermediate Waypoints with Indices')
-    plt.gca().set_aspect('equal')
-    plt.grid(color='0.8', linestyle='-', linewidth=0.5)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-print('-------------------------------------------------')
-
-# Move the policy model to the correct device (e.g., GPU if available)
-# This ensures all model parameters are on the same device as the input tensor
-policy.to(ptu.device)
-
-# Sample a random observation from the environment’s observation space
-# This gives a NumPy array sampled uniformly from the valid bounds
-sampled_obsv = expl_env.wrapped_env.observation_space.sample()
-
-# Convert the NumPy observation into a PyTorch tensor
-sampled_obsv = ptu.from_numpy(sampled_obsv)
-
-# Move the tensor to the same device as the policy (usually GPU)
-sampled_obsv = sampled_obsv.to(ptu.device)
-
-# Display the sampled observation tensor
-print('Sampled observation from normalized env: \n', sampled_obsv)
-
-# Use the policy to sample an action based on the observation
-# The policy expects NumPy input, so we convert the tensor back to NumPy
-action, _ = policy.get_action(ptu.get_numpy(sampled_obsv))
-
-# Print the sampled action (output of the policy)
-print('Sampled action using policy:', action)
-print('-------------------------------------------------')
-
-# Try resetting the environment with and without action
-print('Sampling count before old reset:', expl_env.wrapped_env.sampling_count)
-o = expl_env.reset()
-print('Sampling count after old reset :', expl_env.wrapped_env.sampling_count)
-o = ptu.from_numpy(o).to(ptu.device)
-o_waypoint_north = expl_env.obs.auto_pilot.navigate.north
-o_waypoint_east = expl_env.obs.auto_pilot.navigate.east
-
-# Reset to get initial states, sample an action using initial states, then reinitiate again using sampled action
-owa = expl_env.reset()                          # First reset
-owa = ptu.from_numpy(owa).to(ptu.device)
-action, _ = policy.get_action(ptu.get_numpy(owa))  # Get an action
-print('Sampling count before new reset:', expl_env.wrapped_env.sampling_count)
-owa = expl_env.reset(action)                    # Second reset  
-owa = ptu.from_numpy(owa).to(ptu.device)
-print('Sampling count after new reset :', expl_env.wrapped_env.sampling_count)
-owa_waypoint_north = expl_env.obs.auto_pilot.navigate.north
-owa_waypoint_east = expl_env.obs.auto_pilot.navigate.east
-
-print('Check if imediate route sampling during the init reset works')
-print('Initial states w/o action  :\n', o)
-print('North waypoints w/o action :', o_waypoint_north)
-print('East waypoints w/o action  :', o_waypoint_east)
-print('###')
-print('Initial states w/ action   :\n', owa)
-print('North waypoints w/ action  :', owa_waypoint_north)
-print('East waypoints w/ action   :', owa_waypoint_east)
-print('-------------------------------------------------')
-
-# Reset the environment
-print('Print reset, step up, and see how the simulation results is stored')
-expl_env.reset(action)
-print('init north:', expl_env.obs.ship_model.north)
-print('init east :', expl_env.obs.ship_model.east)
-print('init yaw_a:', expl_env.obs.ship_model.yaw_angle)
-print('init time :', expl_env.obs.ship_model.int.time)
-print('init north list:', expl_env.obs.ship_model.simulation_results['north position [m]'])
-print('init east list :', expl_env.obs.ship_model.simulation_results['east position [m]'])
-print('init yaw_a list:', expl_env.obs.ship_model.simulation_results['yaw angle [deg]'])
-print('init time list :', expl_env.obs.ship_model.simulation_results['time [s]'])
-print('init route north:', expl_env.obs.auto_pilot.navigate.north)
-print('init route east :', expl_env.obs.auto_pilot.navigate.east)
-print('###')
-print('act:', action)
-print('###')
-expl_env.step(action)
-print('after step north:', expl_env.obs.ship_model.north)
-print('after step east :', expl_env.obs.ship_model.east)
-print('after step yaw_a:', expl_env.obs.ship_model.yaw_angle)
-print('after step time :', expl_env.obs.ship_model.int.time)
-# print('after step north list:', expl_env.obs.ship_model.simulation_results['north position [m]'])
-# print('after step east list :', expl_env.obs.ship_model.simulation_results['east position [m]'])
-# print('after step yaw_a list:', expl_env.obs.ship_model.simulation_results['yaw angle [deg]'])
-# print('after step time list :', expl_env.obs.ship_model.simulation_results['time [s]'])
-print('after step route north:', expl_env.obs.auto_pilot.navigate.north)
-print('after step route east :', expl_env.obs.auto_pilot.navigate.east)
-print('-------------------------------------------------')
-
-# # Test ast_sac_rollout function() in MDPPathCollector.collect_new_paths
-# max_path_length = 1000
-# num_expl_steps_per_train_loop=1000
-# discard_incomplete_paths = False
-# paths = expl_path_collector.collect_new_paths(max_path_length=max_path_length,
-#                                               num_steps=num_expl_steps_per_train_loop,
-#                                               discard_incomplete_paths=discard_incomplete_paths)
 # print('-------------------------------------------------')
+test1 = True
+test1 = False
+
+if test1:
+    # Check normalized box env
+    action_space_lo = env.action_space.low
+    print('Basic env:', action_space_lo)
+    action_space_norm_lo = expl_env.action_space.low
+    print('Normalized box env:', action_space_norm_lo)
+    print('-------------------------------------------------')
+
+test2 = True
+test2 = False
+
+if test2:
+    # Check the sampling
+    action = env.action_space.sample()
+    print('Basic env:', action)
+    action_norm = expl_env.action_space.sample()
+    print('Normalized box env:', action_norm)
+    print('-------------------------------------------------')
+
+test3 = True
+test3 = False
+
+if test3:
+    # Check for getting intermediate waypoints based on sampled action
+    # Do it 4 times
+    intermediate_waypoint_list = []
+
+    action = env.action_space.sample()
+    print('scoping angle 1 in degree:', np.rad2deg(action[0]))
+    intermediate_waypoint = env.get_intermediate_waypoints(action)
+    intermediate_waypoint_list.append(intermediate_waypoint)
+    env.sampling_count += 1
+    print('IW1:', intermediate_waypoint)
+
+    action = env.action_space.sample()
+    print('scoping angle 2 in degree:', np.rad2deg(action[0]))
+    intermediate_waypoint = env.get_intermediate_waypoints(action)
+    intermediate_waypoint_list.append(intermediate_waypoint)
+    env.sampling_count += 1
+    print('IW2:', intermediate_waypoint)
+
+    action = env.action_space.sample()
+    print('scoping angle 3 in degree:', np.rad2deg(action[0]))
+    intermediate_waypoint = env.get_intermediate_waypoints(action)
+    intermediate_waypoint_list.append(intermediate_waypoint)
+    env.sampling_count += 1
+    print('IW3:', intermediate_waypoint)
+
+    action = env.action_space.sample()
+    print('scoping angle 4 in degree:', np.rad2deg(action[0]))
+    intermediate_waypoint = env.get_intermediate_waypoints(action)
+    intermediate_waypoint_list.append(intermediate_waypoint)
+    env.sampling_count += 1
+    print('IW4:', intermediate_waypoint)
+
+    # Plot the points
+    obs_route_n_start = obs.auto_pilot.navigate.north[0]
+    obs_route_e_start = obs.auto_pilot.navigate.east[0]
+    obs_route_n_end = obs.auto_pilot.navigate.north[-1]
+    obs_route_e_end = obs.auto_pilot.navigate.east[-1]
+    obs_route_end = [np.float64(obs_route_n_end), np.float64(obs_route_e_end)]
+    obs_route_start = [np.float64(obs_route_n_start), np.float64(obs_route_e_start)]
+
+    intermediate_waypoint_list.insert(0, obs_route_start)
+    intermediate_waypoint_list.append(obs_route_end)
+
+    north_list, east_list = zip(*intermediate_waypoint_list)
+
+    # Create the figure
+    plot=False
+    # plot=True
+    if plot:
+        plt.figure(figsize=(8, 6))
+        plt.scatter(east_list, north_list, color='red', label='Sampled Waypoints')
+        plt.plot(east_list, north_list, linestyle='--', color='gray', label='Waypoint Path')
+
+        # Annotate each point with its index
+        for idx, (e, n) in enumerate(zip(east_list, north_list)):
+            plt.text(e, n, f'{idx}', fontsize=10, ha='right', va='bottom')
+
+        # Label and style
+        map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+        plt.xlim(0, 20000)
+        plt.ylim(0, 10000)
+        plt.xlabel('East position (m)')
+        plt.ylabel('North position (m)')
+        plt.title('Intermediate Waypoints with Indices')
+        plt.gca().set_aspect('equal')
+        plt.grid(color='0.8', linestyle='-', linewidth=0.5)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+    print('-------------------------------------------------')
+
+test4 = True
+test4 = False
+
+if test4:
+    # Move the policy model to the correct device (e.g., GPU if available)
+    # This ensures all model parameters are on the same device as the input tensor
+    policy.to(ptu.device)
+
+    # Sample a random observation from the environment’s observation space
+    # This gives a NumPy array sampled uniformly from the valid bounds
+    sampled_obsv = expl_env.wrapped_env.observation_space.sample()
+
+    # Display the sampled observation tensor
+    print('Sampled observation from normalized env: \n', sampled_obsv)
+
+    # Use the policy to sample an action based on the observation
+    # The policy expects NumPy input, so we convert the tensor back to NumPy
+    action, _ = policy.get_action(sampled_obsv)
+
+    # Print the sampled action (output of the policy)
+    print('Sampled action using policy:', action)
+    print('-------------------------------------------------')
+
+test5 = True
+test5 = False
+
+if test5:
+    # Try resetting the environment with and without action
+    print('Sampling count before old reset:', expl_env.wrapped_env.sampling_count)
+    o = expl_env.reset()
+    print('Sampling count after old reset :', expl_env.wrapped_env.sampling_count)
+    o_waypoint_north = expl_env.obs.auto_pilot.navigate.north
+    o_waypoint_east = expl_env.obs.auto_pilot.navigate.east
+
+    # Reset to get initial states, sample an action using initial states, then reinitiate again using sampled action
+    owa = expl_env.reset()                          # First reset
+    policy.to(ptu.device)                           # THIS IS IMPORTANT
+    action, _ = policy.get_action(owa)              # Get an action
+    print('Sampling count before new reset:', expl_env.wrapped_env.sampling_count)
+    owa = expl_env.reset(action)                    # Second reset  
+    print('Sampling count after new reset :', expl_env.wrapped_env.sampling_count)
+    owa_waypoint_north = expl_env.obs.auto_pilot.navigate.north
+    owa_waypoint_east = expl_env.obs.auto_pilot.navigate.east
+
+    print('Check if imediate route sampling during the init reset works')
+    print('Initial states w/o action  :\n', o)
+    print('North waypoints w/o action :', o_waypoint_north)
+    print('East waypoints w/o action  :', o_waypoint_east)
+    print('###')
+    print('Initial states w/ action   :\n', owa)
+    print('North waypoints w/ action  :', owa_waypoint_north)
+    print('East waypoints w/ action   :', owa_waypoint_east)
+    print('-------------------------------------------------')
+
+test6 = True
+test6 = False
+
+if test6:
+    # First we get an action
+    init_obs = expl_env.reset()                 # Get initial observation
+    policy.to(ptu.device)                       # Sent the policy to the device
+    action, _ = policy.get_action(init_obs)     # Then sample initial action (normalized action [-1,1])
+    print('Sampled action:', action)
+    
+    # Reset the environment
+    print('Print reset, step up, and see how the simulation results is stored')
+    expl_env.reset(action)
+    print('init north:', expl_env.obs.ship_model.north)
+    print('init east :', expl_env.obs.ship_model.east)
+    print('init yaw_a:', expl_env.obs.ship_model.yaw_angle)
+    print('init time :', expl_env.obs.ship_model.int.time)
+    print('init north list:', expl_env.obs.ship_model.simulation_results['north position [m]'])
+    print('init east list :', expl_env.obs.ship_model.simulation_results['east position [m]'])
+    print('init yaw_a list:', expl_env.obs.ship_model.simulation_results['yaw angle [deg]'])
+    print('init time list :', expl_env.obs.ship_model.simulation_results['time [s]'])
+    print('init route north:', expl_env.obs.auto_pilot.navigate.north)
+    print('init route east :', expl_env.obs.auto_pilot.navigate.east)
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)
+    print('after step north:', expl_env.obs.ship_model.north)
+    print('after step east :', expl_env.obs.ship_model.east)
+    print('after step yaw_a:', expl_env.obs.ship_model.yaw_angle)
+    print('after step time :', expl_env.obs.ship_model.int.time)
+    print('after step north list:', expl_env.obs.ship_model.simulation_results['north position [m]'])
+    print('after step east list :', expl_env.obs.ship_model.simulation_results['east position [m]'])
+    print('after step yaw_a list:', expl_env.obs.ship_model.simulation_results['yaw angle [deg]'])
+    print('after step time list :', expl_env.obs.ship_model.simulation_results['time [s]'])
+    print('after step route north:', expl_env.obs.auto_pilot.navigate.north)
+    print('after step route east :', expl_env.obs.auto_pilot.navigate.east)
+
+    print('-------------------------------------------------')
+
+test7 = True
+# test7 = False
+
+if test7:
+    print('Test and plot step up behaviour')
+    print('sampling count before reset:', expl_env.wrapped_env.sampling_count)
+    owa = expl_env.reset()                          # First reset
+    policy.to(ptu.device)                           # Sent policy networks to device
+    action, _ = policy.get_action(owa)              # Get an action
+    expl_env.reset(action)                          # Then reset using action
+    print('Init action', action)
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)
+
+    print('sampling count after step:', expl_env.wrapped_env.sampling_count)
+
+    # Get the simulation results for all assets
+    ts_results_df = pd.DataFrame().from_dict(expl_env.wrapped_env.test.ship_model.simulation_results)
+    os_results_df = pd.DataFrame().from_dict(expl_env.wrapped_env.obs.ship_model.simulation_results)
+
+    # Get the time when the sampling begin, failure modes and the waypoints
+    waypoint_sampling_times = expl_env.wrapped_env.waypoint_sampling_times
+    print('Waypoint sampling time record:', waypoint_sampling_times)
+    print('---')
+    print('after step route north:', expl_env.obs.auto_pilot.navigate.north)
+    print('after step route east :', expl_env.obs.auto_pilot.navigate.east)
+    print('---')
+    print(env_info['events'])
+
+    # Create a plot 1 single figure and axis instead of a grid
+    plot_1 = False
+    plot_1 = True
+
+    # Plot 2: Status plot
+    plot_2 = False
+    plot_2 = True
+
+    # Create a No.2 3x4 grid for subplots
+    if plot_2:
+        fig_2, axes = plt.subplots(nrows=3, ncols=4, figsize=(15, 10))
+        plt.figure(fig_2.number)  # Ensure it's the current figure
+        axes = axes.flatten()  # Flatten the 2D array for easier indexing
+    
+        # Center plotting
+        center_plot_window()
+
+        # Plot 2.1: Forward Speed
+        axes[0].plot(ts_results_df['time [s]'], ts_results_df['forward speed [m/s]'])
+        axes[0].axhline(y=test_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
+        axes[0].set_title('Test Ship Forward Speed [m/s]')
+        axes[0].set_xlabel('Time (s)')
+        axes[0].set_ylabel('Forward Speed (m/s)')
+        axes[0].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[0].set_xlim(left=0)
+
+        # Plot 3.1: Forward Speed
+        axes[1].plot(os_results_df['time [s]'], os_results_df['forward speed [m/s]'])
+        axes[1].axhline(y=obs_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
+        axes[1].set_title('Obstacle Ship Forward Speed [m/s]')
+        axes[1].set_xlabel('Time (s)')
+        axes[1].set_ylabel('Forward Speed (m/s)')
+        axes[1].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[1].set_xlim(left=0)
+
+        # Plot 2.2: Rudder Angle
+        axes[2].plot(ts_results_df['time [s]'], ts_results_df['rudder angle [deg]'])
+        axes[2].set_title('Test Ship Rudder angle [deg]')
+        axes[2].set_xlabel('Time (s)')
+        axes[2].set_ylabel('Rudder angle [deg]')
+        axes[2].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[2].set_xlim(left=0)
+        axes[2].set_ylim(-31,31)
+
+        # Plot 3.2: Rudder Angle
+        axes[3].plot(os_results_df['time [s]'], os_results_df['rudder angle [deg]'])
+        axes[3].set_title('Obstacle Ship Rudder angle [deg]')
+        axes[3].set_xlabel('Time (s)')
+        axes[3].set_ylabel('Rudder angle [deg]')
+        axes[3].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[3].set_xlim(left=0)
+        axes[3].set_ylim(-31,31)
+
+        # Plot 2.3: Cross Track error
+        axes[4].plot(ts_results_df['time [s]'], ts_results_df['cross track error [m]'])
+        axes[4].set_title('Test Ship Cross Track Error [m]')
+        axes[4].set_xlabel('Time (s)')
+        axes[4].set_ylabel('Cross track error (m)')
+        axes[4].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[4].set_xlim(left=0)
+
+        # Plot 3.3: Cross Track error
+        axes[5].plot(os_results_df['time [s]'], os_results_df['cross track error [m]'])
+        axes[5].set_title('Obstacle Ship Cross Track Error [m]')
+        axes[5].set_xlabel('Time (s)')
+        axes[5].set_ylabel('Cross track error (m)')
+        axes[5].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[5].set_xlim(left=0)
+
+        # Plot 2.4: Propeller Shaft Speed
+        axes[6].plot(ts_results_df['time [s]'], ts_results_df['propeller shaft speed [rpm]'])
+        axes[6].set_title('Test Ship Propeller Shaft Speed [rpm]')
+        axes[6].set_xlabel('Time (s)')
+        axes[6].set_ylabel('Propeller Shaft Speed (rpm)')
+        axes[6].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[6].set_xlim(left=0)
+
+        # Plot 3.4: Propeller Shaft Speed
+        axes[7].plot(os_results_df['time [s]'], os_results_df['propeller shaft speed [rpm]'])
+        axes[7].set_title('Obstacle Ship Propeller Shaft Speed [rpm]')
+        axes[7].set_xlabel('Time (s)')
+        axes[7].set_ylabel('Propeller Shaft Speed (rpm)')
+        axes[7].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[7].set_xlim(left=0)
+
+        # Plot 2.5: Power vs Available Power
+        axes[8].plot(ts_results_df['time [s]'], ts_results_df['power electrical [kw]'], label="Power")
+        axes[8].plot(ts_results_df['time [s]'], ts_results_df['available power electrical [kw]'], label="Available Power")
+        axes[8].set_title('Test Ship Power vs Available Power [kw]')
+        axes[8].set_xlabel('Time (s)')
+        axes[8].set_ylabel('Power (kw)')
+        axes[8].legend()
+        axes[8].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[8].set_xlim(left=0)
+
+        # Plot 3.5: Power vs Available Power
+        axes[9].plot(os_results_df['time [s]'], os_results_df['power electrical [kw]'], label="Power")
+        axes[9].plot(os_results_df['time [s]'], os_results_df['available power electrical [kw]'], label="Available Power")
+        axes[9].set_title('Obstacle Ship Power vs Available Power [kw]')
+        axes[9].set_xlabel('Time (s)')
+        axes[9].set_ylabel('Power (kw)')
+        axes[9].legend()
+        axes[9].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[9].set_xlim(left=0)
+
+        # Plot 2.6: Fuel Consumption
+        axes[10].plot(ts_results_df['time [s]'], ts_results_df['fuel consumption [kg]'])
+        axes[10].set_title('Test Ship Fuel Consumption [kg]')
+        axes[10].set_xlabel('Time (s)')
+        axes[10].set_ylabel('Fuel Consumption (kg)')
+        axes[10].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[10].set_xlim(left=0)
+
+        # Plot 3.6: Fuel Consumption
+        axes[11].plot(os_results_df['time [s]'], os_results_df['fuel consumption [kg]'])
+        axes[11].set_title('Obstacle Ship Fuel Consumption [kg]')
+        axes[11].set_xlabel('Time (s)')
+        axes[11].set_ylabel('Fuel Consumption (kg)')
+        axes[11].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[11].set_xlim(left=0)
+
+        # Adjust layout for better spacing
+        plt.tight_layout()
+
+    if plot_1:    
+        plt.figure(figsize=(10, 5.5))
+
+        # Plot 1.1: Ship trajectory with sampled route
+        # Test ship
+        plt.plot(ts_results_df['east position [m]'].to_numpy(), ts_results_df['north position [m]'].to_numpy())
+        plt.scatter(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, marker='x', color='blue')  # Waypoints
+        plt.plot(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, linestyle='--', color='blue')  # Line
+        for x, y in zip(test.ship_model.ship_drawings[1], test.ship_model.ship_drawings[0]):
+            plt.plot(x, y, color='blue')
+        for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
+            test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
+            plt.gca().add_patch(test_radius_circle)
+        # Obs ship    
+        plt.plot(os_results_df['east position [m]'].to_numpy(), os_results_df['north position [m]'].to_numpy())
+        plt.scatter(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, marker='x', color='red')  # Waypoints
+        plt.plot(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, linestyle='--', color='red')  # Line
+        for x, y in zip(obs.ship_model.ship_drawings[1], obs.ship_model.ship_drawings[0]):
+            plt.plot(x, y, color='red')
+        for i, (east, north) in enumerate(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north)):
+            obs_radius_circle = Circle((east, north), args.radius_of_acceptance, color='red', alpha=0.3, fill=True)
+            plt.gca().add_patch(obs_radius_circle)
+        map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+
+        plt.xlim(0, 20000)
+        plt.ylim(0, 10000)
+        plt.title('Ship Trajectory with the Sampled Route')
+        plt.xlabel('East position (m)')
+        plt.ylabel('North position (m)')
+        plt.gca().set_aspect('equal')
+        plt.grid(color='0.8', linestyle='-', linewidth=0.5)
+
+        # Adjust layout for better spacing
+        plt.tight_layout()
+    
+    # Show Plot
+    plt.show()
+
+    print('-------------------------------------------------')
+
+# # # # Test ast_sac_rollout function() in MDPPathCollector.collect_new_paths
+# # # max_path_length = 1000
+# # # num_expl_steps_per_train_loop=1000
+# # # discard_incomplete_paths = False
+# # # paths = expl_path_collector.collect_new_paths(max_path_length=max_path_length,
+# # #                                               num_steps=num_expl_steps_per_train_loop,
+# # #                                               discard_incomplete_paths=discard_incomplete_paths)
+# # # print('-------------------------------------------------')

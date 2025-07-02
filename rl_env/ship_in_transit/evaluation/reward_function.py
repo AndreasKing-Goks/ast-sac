@@ -105,7 +105,7 @@ def get_reward_and_env_info(env_args,
     is_obs_grounding = is_pos_inside_obstacles(map_obj, obs_pos, obs_ship_length)
     
     # Get navigation failure flags for both ship under test and obstacle ship
-    is_test_nav_failure = any([is_sample_travel_time_too_long(travel_dist, traj_segment_length),
+    is_test_nav_failure = any([is_sample_travel_dist_too_far(travel_dist, traj_segment_length),
                                is_sample_travel_time_too_long(travel_time)])
     is_obs_nav_failure = is_ship_navigation_failure(obs_e_ct)
     

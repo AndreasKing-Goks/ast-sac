@@ -117,8 +117,12 @@ class MultiShipRLEnv(Env):
         # Scenario-Based Model Predictive Controller
         self.sbmpc = SBMPC(tf=1000, dt=20)
         
+        ## INTERMEDIATE WAYPOINT SAMPLER PROPERTIES
         # Set the intermediate waypoint sampler parameter
         self.init_get_intermediate_waypoints()
+        
+        # Set up the waypoint sampling time tracker
+        self.waypoint_sampling_times = []
         
         # Set up the Reward Tracker
         self.reward_tracker = RewardTracker()
@@ -238,6 +242,9 @@ class MultiShipRLEnv(Env):
         
         # Reset the intermediate waypoint converter
         self.init_get_intermediate_waypoints()
+        
+        # Reset the waypoint sampling time tracker
+        self.waypoint_sampling_times = []
         
         # Place the assets in the simulator
         self.init_step(action)
@@ -447,9 +454,13 @@ class MultiShipRLEnv(Env):
         
             return next_states
         
+        # When the obstacle ship use scoping angle
         if scoping_angle:
             self.obs_ship_uses_scoping_angle(scoping_angle)
-
+            
+            # Then record the time when the obstacle ship sample the scoping angle
+            self.waypoint_sampling_times.append(self.obs.ship_model.int.time)
+            
         # Measure ship position and speed
         north_position = self.obs.ship_model.north
         east_position = self.obs.ship_model.east

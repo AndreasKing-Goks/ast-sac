@@ -44,10 +44,15 @@ class NormalizedBoxEnv(ProxyEnv):
         return (obs - self._obs_mean) / (self._obs_std + 1e-8)
 
     def step(self, action):
+        print('normalized action:', action)
+        
         lb = self._wrapped_env.action_space.low
         ub = self._wrapped_env.action_space.high
         scaled_action = lb + (action + 1.) * 0.5 * (ub - lb)
         scaled_action = np.clip(scaled_action, lb, ub)
+        
+        print('denormalized action:', scaled_action)
+        print('scoping angle      :', np.rad2deg(scaled_action))
 
         wrapped_step = self._wrapped_env.step(scaled_action)
         next_obs, reward, done, info = wrapped_step

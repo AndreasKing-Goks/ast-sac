@@ -25,7 +25,7 @@ from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
 
 ## IMPORT UTILS
-from utils.basic_animate import ShipTrajectoryAnimator
+from utils.animate import ShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 from utils.center_plot import center_plot_window
 
@@ -378,7 +378,7 @@ animation = True
 if animation:
     test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
     obs_route = {'east': obs.auto_pilot.navigate.east, 'north': obs.auto_pilot.navigate.north}
-    waypoint_reached_times = None
+    waypoint_sampling_times = None
     waypoints = list(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north))
     map_obj = map
     radius_of_acceptance = args.radius_of_acceptance
@@ -394,7 +394,7 @@ if animation:
                                       os_results_df,
                                       test_route,
                                       obs_route,
-                                      waypoint_reached_times,
+                                      waypoint_sampling_times,
                                       waypoints,
                                       map_obj,
                                       radius_of_acceptance,
@@ -414,13 +414,13 @@ if animation:
     # Create the output directory if it doesn't exist
     os.makedirs(ani_dir, exist_ok=True)
     
-    animator.save(video_path, fps)
-    # animator.run(fps)
+    # animator.save(video_path, fps)
+    animator.run(fps)
 
 ## SHOW PLOT
 # Plot 1: Map plot
 plot_1 = False
-# plot_1 = True
+plot_1 = True
 
 # Plot 2: Status plot
 plot_2 = False
@@ -598,9 +598,9 @@ if plot_1:
     plt.plot(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, linestyle='--', color='blue')  # Line
     for x, y in zip(test.ship_model.ship_drawings[1], test.ship_model.ship_drawings[0]):
         plt.plot(x, y, color='blue')
-    # for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
-    #     test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
-    #     plt.gca().add_patch(test_radius_circle)
+    for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
+        test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
+        plt.gca().add_patch(test_radius_circle)
     # Obs ship    
     plt.plot(os_results_df['east position [m]'].to_numpy(), os_results_df['north position [m]'].to_numpy())
     plt.scatter(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, marker='x', color='red')  # Waypoints
