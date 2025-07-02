@@ -114,7 +114,7 @@ def get_reward_and_env_info(env_args,
     
     # Get te false intermediate waypoint sampling, only during action sampling phase
     if intermediate_waypoints:
-        is_sampling_failure = any([is_route_inside_obstacles(intermediate_waypoints),
+        is_sampling_failure = any([is_route_inside_obstacles(map_obj, intermediate_waypoints),
                                    is_route_outside_horizon(map_obj, intermediate_waypoints)])
     else:
         is_sampling_failure = False

@@ -639,7 +639,9 @@ class MultiShipRLEnv(Env):
             east_position = self.obs.ship_model.east
             obs_pos = [north_position, east_position]
 
-            is_reach_roa = check_condition.is_reach_radius_of_acceptance(self.obs, obs_pos)
+            is_reach_roa = check_condition.is_reach_radius_of_acceptance(self.obs, 
+                                                                         obs_pos,
+                                                                         r_o_a=self.args.radius_of_acceptance)
             
             # Check if the simulator has stopped or not
             if combined_done:

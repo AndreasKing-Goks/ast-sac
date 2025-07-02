@@ -61,7 +61,7 @@ def get_sim_args():
                         help='Number of episode for learning performance assesment(default: 20)')
 
     # Others
-    parser.add_argument('--radius_of_acceptance', type=int, default=300, metavar='O',
+    parser.add_argument('--radius_of_acceptance', type=int, default=200, metavar='O',
                         help='Radius of acceptance for LOS algorithm(default: 600)')
     parser.add_argument('--lookahead_distance', type=int, default=1000, metavar='O',
                         help='Lookahead distance for LOS algorithm(default: 450)')

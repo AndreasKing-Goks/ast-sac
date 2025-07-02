@@ -635,8 +635,8 @@ if test7:
     owa = expl_env.reset()                          # First reset
     policy.to(ptu.device)                           # Sent policy networks to device
     action, _ = policy.get_action(owa)              # Get an action
-    expl_env.reset(action)                          # Then reset using action
     print('Init action', action)
+    expl_env.reset(action)                          # Then reset using action
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)
 
     print('sampling count after step:', expl_env.wrapped_env.sampling_count)
