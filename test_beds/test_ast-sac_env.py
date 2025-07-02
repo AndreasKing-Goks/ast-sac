@@ -632,14 +632,28 @@ test7 = True
 if test7:
     print('Test and plot step up behaviour')
     print('sampling count before reset:', expl_env.wrapped_env.sampling_count)
-    owa = expl_env.reset()                          # First reset
-    policy.to(ptu.device)                           # Sent policy networks to device
-    action, _ = policy.get_action(owa)              # Get an action
-    print('Init action', action)
-    expl_env.reset(action)                          # Then reset using action
-    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)
-
-    print('sampling count after step:', expl_env.wrapped_env.sampling_count)
+    init_observations = expl_env.reset()                                                    # First reset
+    policy.to(ptu.device)                                                                   # Sent policy networks to device
+    
+    action, _ = policy.get_action(init_observations)                                        # Get an action
+    print('First action', np.rad2deg(action))
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
+                  
+    action, _ = policy.get_action(next_observations)                                        # Get an action
+    print('Second action', np.rad2deg(action))
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
+    
+    action, _ = policy.get_action(next_observations)                                        # Get an action
+    print('Third action', np.rad2deg(action))
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
+    
+    action, _ = policy.get_action(next_observations)                                        # Get an action
+    print('Fourth action', np.rad2deg(action))
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
 
     # Get the simulation results for all assets
     ts_results_df = pd.DataFrame().from_dict(expl_env.wrapped_env.test.ship_model.simulation_results)
@@ -788,9 +802,9 @@ if test7:
         plt.plot(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, linestyle='--', color='blue')  # Line
         for x, y in zip(test.ship_model.ship_drawings[1], test.ship_model.ship_drawings[0]):
             plt.plot(x, y, color='blue')
-        for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
-            test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
-            plt.gca().add_patch(test_radius_circle)
+        # for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
+        #     test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
+        #     plt.gca().add_patch(test_radius_circle)
         # Obs ship    
         plt.plot(os_results_df['east position [m]'].to_numpy(), os_results_df['north position [m]'].to_numpy())
         plt.scatter(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, marker='x', color='red')  # Waypoints

@@ -196,7 +196,7 @@ class MultiShipRLEnv(Env):
         route_coord_e = self.e_base + self.e_s
         
         # Update new base for the next route coordinate
-        next_segment_factor = self.sampling_count + 2
+        next_segment_factor = self.sampling_count + 1 
         self.n_base = self.obs.auto_pilot.navigate.north[0] + (self.AB_north_segment_length * next_segment_factor) + self.n_s
         self.e_base = self.obs.auto_pilot.navigate.east[0] + (self.AB_east_segment_length * next_segment_factor) + self.e_s
         
@@ -295,16 +295,16 @@ class MultiShipRLEnv(Env):
             # Progress time variable to the next time step
             ship.ship_model.int.next_time()
         
-        # Then directly sample intermediate waypoints and let the obstacle ship used it
-        scoping_angle = action
+        # # Then directly sample intermediate waypoints and let the obstacle ship used it
+        # scoping_angle = action
         
-        # If the action is not none and need the action is already normalized
-        if self.normalize_action and action is not None:
-            scoping_angle = self.denormalize_action(action)
+        # # If the action is not none and need the action is already normalized
+        # if self.normalize_action and action is not None:
+        #     scoping_angle = self.denormalize_action(action)
         
-        # If the action is not none and not normalized anymore
-        if action is not None:
-            self.obs_ship_uses_scoping_angle(scoping_angle)
+        # # If the action is not none and not normalized anymore
+        # if action is not None:
+        #     self.obs_ship_uses_scoping_angle(scoping_angle)
                     
         # Activate travel distance and travel time tracker after placing the assets in the simulator
         self.tracker_active = True
@@ -456,7 +456,7 @@ class MultiShipRLEnv(Env):
         
         # When the obstacle ship use scoping angle
         if scoping_angle:
-            self.obs_ship_uses_scoping_angle(scoping_angle)
+            # self.obs_ship_uses_scoping_angle(scoping_angle)
             
             # Then record the time when the obstacle ship sample the scoping angle
             self.waypoint_sampling_times.append(self.obs.ship_model.int.time)
@@ -582,6 +582,7 @@ class MultiShipRLEnv(Env):
         # Arguments for evaluation function
         env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
         if scoping_angle:
+            print(scoping_angle)
             intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
         else:
             intermediate_waypoints = None
@@ -624,6 +625,14 @@ class MultiShipRLEnv(Env):
         
         # Set up container
         accumulated_reward = 0
+        
+        # If the action is not none and need the action is already normalized
+        if self.normalize_action and action is not None:
+            action = self.denormalize_action(action)
+        
+        # If the action is not none and not normalized anymore
+        if action is not None:
+            self.obs_ship_uses_scoping_angle(action)
         
         # If reaching RoA, not done, and within simulation time limit do stepping with action
         # If not, just step the simulator
