@@ -457,7 +457,7 @@ if test2:
     print('-------------------------------------------------')
 
 test3 = True
-# test3 = False
+test3 = False
 
 if test3:
     # Check for getting intermediate waypoints based on sampled action
@@ -633,33 +633,44 @@ if test6:
     print('-------------------------------------------------')
 
 test7 = True
-test7 = False
+# test7 = False
 
 if test7:
+    
+    print('test 1:',expl_env.wrapped_env.waypoint_samples)
+    
     print('Test and plot step up behaviour')
     print('sampling count before reset:', expl_env.wrapped_env.sampling_count)
     init_observations = expl_env.reset()                                                    # First reset
     policy.to(ptu.device)                                                                   # Sent policy networks to device
     
-    action, _ = policy.get_action(init_observations)                                        # Get an action
+    print('test 2:',expl_env.wrapped_env.waypoint_samples)
+    
+    # action, _ = policy.get_action(init_observations)                                        # Get an action
+    action = np.deg2rad(0)
     print('First action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
-                  
-    action, _ = policy.get_action(next_observations)                                        # Get an action
+    
+    print('test 3:',expl_env.wrapped_env.waypoint_samples)
+                    
+    # action, _ = policy.get_action(next_observations)                                        # Get an action
+    action = np.deg2rad(0)
     print('Second action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
     
-    action, _ = policy.get_action(next_observations)                                        # Get an action
-    print('Third action', np.rad2deg(env.denormalize_action(action)))
-    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
-    print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
+    # # action, _ = policy.get_action(next_observations)                                        # Get an action
+    # action = np.deg2rad(0)
+    # print('Third action', np.rad2deg(env.denormalize_action(action)))
+    # next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    # print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
     
-    action, _ = policy.get_action(next_observations)                                        # Get an action
-    print('Fourth action', np.rad2deg(env.denormalize_action(action)))
-    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
-    print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
+    # # action, _ = policy.get_action(next_observations)                                        # Get an action
+    # action = np.deg2rad(0)
+    # print('Fourth action', np.rad2deg(env.denormalize_action(action)))
+    # next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    # print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
 
     # Get the simulation results for all assets
     ts_results_df = pd.DataFrame().from_dict(expl_env.wrapped_env.test.ship_model.simulation_results)

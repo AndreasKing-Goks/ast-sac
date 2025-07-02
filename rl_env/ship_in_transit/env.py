@@ -121,7 +121,8 @@ class MultiShipRLEnv(Env):
         # Set the intermediate waypoint sampler parameter
         self.init_get_intermediate_waypoints()
         
-        # Set up the waypoint sampling time tracker
+        # Set up the waypoint sample and sampling time tracker
+        self.waypoint_samples = []
         self.waypoint_sampling_times = []
         
         # Set up the Reward Tracker
@@ -202,6 +203,9 @@ class MultiShipRLEnv(Env):
         # Repack into simulation input
         intermediate_waypoints = [route_coord_n, route_coord_e]
         
+        # Track the waypoint sample
+        self.waypoint_samples.append(intermediate_waypoints)
+        
         return intermediate_waypoints
     
     def reset(self,
@@ -241,6 +245,9 @@ class MultiShipRLEnv(Env):
         
         # Reset the intermediate waypoint converter
         self.init_get_intermediate_waypoints()
+        
+        # Set up the waypoint samples tracker
+        self.waypoint_samples = []
         
         # Reset the waypoint sampling time tracker
         self.waypoint_sampling_times = []
@@ -293,17 +300,6 @@ class MultiShipRLEnv(Env):
             
             # Progress time variable to the next time step
             ship.ship_model.int.next_time()
-        
-        # # Then directly sample intermediate waypoints and let the obstacle ship used it
-        # scoping_angle = action
-        
-        # # If the action is not none and need the action is already normalized
-        # if self.normalize_action and action is not None:
-        #     scoping_angle = self.denormalize_action(action)
-        
-        # # If the action is not none and not normalized anymore
-        # if action is not None:
-        #     self.obs_ship_uses_scoping_angle(scoping_angle)
                     
         # Activate travel distance and travel time tracker after placing the assets in the simulator
         self.tracker_active = True
@@ -581,6 +577,7 @@ class MultiShipRLEnv(Env):
         # Arguments for evaluation function
         env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
         if scoping_angle:
+            print('test')
             intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
         else:
             intermediate_waypoints = None
@@ -629,7 +626,7 @@ class MultiShipRLEnv(Env):
             action = self.denormalize_action(action)
         
         # If the action is not none and not normalized anymore
-        if action is not None:
+        if self.sampling_count < self.args.sampling_frequency:
             self.obs_ship_uses_scoping_angle(action)
         
         # If reaching RoA, not done, and within simulation time limit do stepping with action
