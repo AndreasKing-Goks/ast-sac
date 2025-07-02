@@ -329,7 +329,7 @@ time_since_last_ship_drawing = 30
 # Set Collav Mode
 collav_mode = None
 collav_mode = 'simple'
-collav_mode = 'sbmpc'
+# collav_mode = 'sbmpc'
 
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
 env = MultiShipEnv(assets=assets,

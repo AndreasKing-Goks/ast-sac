@@ -53,13 +53,21 @@ class RewardTracker:
         self.from_obs_ship.append(r_obs_ship_grounding + r_obs_ship_nav_failure)
         self.total.append(r_total)
         
-def get_reward_and_env_info(env_args, 
-                            intermediate_waypoints, 
+def get_reward_and_env_info(env_args,  
                             reward_tracker:RewardTracker,
                             normalize_reward=False, 
                             use_relative_bearing = True):
+    '''
+    env_args contains:
+    - assets: To get the simulation states for both ship under test and obstacle ship(s)
+    - map_obj: To get the positional information based on the map object used for the simulator
+    - is_sampling_failure: Info about the validity of action sampling. Has to be evaluated outside of the reward functions because 
+                           this function evaluation is done before _step()
+    - travel_dist, traj_segment_length, travel_time:
+      To get the information about obstacle ship navigational failure potential
+    '''
     ## Unpack env_args
-    assets, map_obj, travel_dist, traj_segment_length, travel_time = env_args
+    assets, map_obj, is_sampling_failure, travel_dist, traj_segment_length, travel_time = env_args
     
     ## Unpack the ship assets
     test, obs = assets
@@ -112,12 +120,11 @@ def get_reward_and_env_info(env_args,
                               is_sample_travel_time_too_long(travel_time),
                               is_ship_navigation_failure(obs_e_ct, e_tol=obs_e_ct_threshold)])
     
-    # Get te false intermediate waypoint sampling, only during action sampling phase
-    if intermediate_waypoints:
-        is_sampling_failure = any([is_route_inside_obstacles(map_obj, intermediate_waypoints),
-                                   is_route_outside_horizon(map_obj, intermediate_waypoints)])
-    else:
-        is_sampling_failure = False
+    # if intermediate_waypoints:
+    #     is_sampling_failure = any([is_route_inside_obstacles(map_obj, intermediate_waypoints),
+    #                                is_route_outside_horizon(map_obj, intermediate_waypoints)])
+    # else:
+    #     is_sampling_failure = False
     
     # Compute ships collision reward. Get the termination status
     r_ship_collision, termination_1 = ships_collision_reward(test_to_obs_distance, encounter_type, is_collision)

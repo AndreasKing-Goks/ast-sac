@@ -408,16 +408,9 @@ class MultiShipRLEnv(Env):
         
         return next_states
     
-    def obs_step(self,
-                 scoping_angle=None):
+    def obs_step(self):
         ''' 
             The method is used for stepping up the simulator for the obstacle ship.
-            
-            Obstacle ship is equipped with the intermediate waypoint sampler.
-            
-            Can still be used without intermediate waypoint sample
-            
-            ***obs_step() ALWAYS takes the unormalized action.***
         '''          
         if self.obs.stop_flag:
             # Ship reached endpoint, keep time aligned but don't integrate
@@ -448,13 +441,6 @@ class MultiShipRLEnv(Env):
                                     dtype=np.float32)
         
             return next_states
-        
-        # When the obstacle ship use scoping angle
-        if scoping_angle:
-            # self.obs_ship_uses_scoping_angle(scoping_angle)
-            
-            # Then record the time when the obstacle ship sample the scoping angle
-            self.waypoint_sampling_times.append(self.obs.ship_model.int.time)
             
         # Measure ship position and speed
         north_position = self.obs.ship_model.north
@@ -514,6 +500,11 @@ class MultiShipRLEnv(Env):
         return next_states
 
     def obs_ship_uses_scoping_angle(self, scoping_angle):
+        '''
+        Set the obstacle ship to use the scoping angle.
+        
+        Then, return the intermediate waypoints.
+        '''
         # Update the sampling counter
         self.sampling_count += 1
         
@@ -530,26 +521,24 @@ class MultiShipRLEnv(Env):
         # Set the travel time and travel distance tracker upon RoA visit. Start recounting again.
         self.travel_dist = 0
         self.travel_time = 0
+        
+        return intermediate_waypoints
     
     def _step(self, 
-             action=None):
-        ''' The method is used for stepping up the simulator for all of the assets
+              is_sampling_failure=False):
+        ''' 
+            The method is used for stepping up the simulator for all of the assets
             
-            Default action is unormalized. 
-            Denormalized the action if the default action mode is normalized
+            The _step() function gets is_sampling_failure to get the reward and termination status
             
-            No further denormalization is needed.
-        '''
-        # Unpack the action
-        scoping_angle = action
-        if self.normalize_action and action is not None:
-            scoping_angle = self.denormalize_action(action)
-        
+            is_sampling_failure is evaluated outside the reward function, for every step() function
+            after action sampling
+        '''        
         # Do test ship step
         test_next_state = self.test_step()
         
         # Do obstacle ship step, get scoping angle as the action
-        obs_next_state = self.obs_step(scoping_angle)
+        obs_next_state = self.obs_step()
         
         # Apply ship drawing (set as optional function) after stepping
         if self.ship_draw:
@@ -575,16 +564,10 @@ class MultiShipRLEnv(Env):
         self.states = next_states 
         
         # Arguments for evaluation function
-        env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
-        if scoping_angle:
-            print('test')
-            intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
-        else:
-            intermediate_waypoints = None
+        env_args = (self.assets, self.map, is_sampling_failure, self.travel_dist, self.AB_segment_length, self.travel_time)
         
-        # Get the reward, and the termination flags
+        # Get the reward, and the termination flags using the intermediate waypoints
         reward, env_info = get_reward_and_env_info(env_args, 
-                                                   intermediate_waypoints,
                                                    reward_tracker=self.reward_tracker)
         
         terminal = env_info['terminal']                                             # Safety violations
@@ -602,7 +585,7 @@ class MultiShipRLEnv(Env):
              action):
         ''' The method is used for stepping up the simulator in accordance to the AST-SAC framework
             
-            Default action is unormalized. 
+            Default action is not normalized. 
             Denormalized the action if the default action mode is normalized
             
             No further denormalization is needed.
@@ -622,16 +605,34 @@ class MultiShipRLEnv(Env):
         accumulated_reward = 0
         
         # If the action is not none and need the action is already normalized
+        scoping_angle = action
         if self.normalize_action and action is not None:
-            action = self.denormalize_action(action)
+            scoping_angle = self.denormalize_action(scoping_angle)
         
         # If the action is not none and not normalized anymore
-        if self.sampling_count < self.args.sampling_frequency:
-            self.obs_ship_uses_scoping_angle(action)
+        # Initially set intermediate waypoints as None
+        intermediate_waypoints = None
         
-        # If reaching RoA, not done, and within simulation time limit do stepping with action
+        # Set is_sampling_failure as False initially.
+        # is_sampling_failure is False when within "allow sampling", intermediate waypoints
+        # violate conditions in is_route_inside_obstacles() and is_route_outside_horizon()
+        is_sampling_failure = False
+        
+        # If allowed to sample
+        if self.sampling_count < self.args.sampling_frequency:
+            # Set the obstacle ship to use the action and get the intermediate waypoints
+            intermediate_waypoints = self.obs_ship_uses_scoping_angle(scoping_angle)
+            
+            # Then we check if the waypoint sampling is correct or not
+            is_sampling_failure = any([check_condition.is_route_inside_obstacles(self.map, intermediate_waypoints),
+                                       check_condition.is_route_outside_horizon(self.map, intermediate_waypoints)])
+            
+            # Then record the time when the obstacle ship sample the scoping angle
+            self.waypoint_sampling_times.append(self.obs.ship_model.int.time)
+        
+        # If reaching RoA, not done, and within simulation time limit do stepping with intermediate waypoints
         # If not, just step the simulator
-        while not is_reach_roa and not combined_done:
+        while (not is_reach_roa and not combined_done):
             # Step up the simulator
             next_states, reward, combined_done, env_info = self._step()
             
@@ -653,15 +654,36 @@ class MultiShipRLEnv(Env):
                 next_observations = next_states
                 break
             
-            # If finally reach radius of acceptance, do final step with action included
-            if is_reach_roa:
-                next_states, reward, combined_done, env_info = self._step(action)
+            # If finally reach radius of acceptance and intermediate waypoints is available, do final step 
+            # with action included to get the reward and termination status
+            if is_reach_roa and intermediate_waypoints:
+                # Step with intermediate_waypoints
+                next_states, reward, combined_done, env_info = self._step(is_sampling_failure)
                 
                 # Then, accumulate the next reward for the AST-SAC
                 accumulated_reward += reward
                 
                 # Then, the next states become the next observations, the break the current looping
                 next_observations = next_states
+                
+                # SPECIAL CASE
+                # The during the last line segment (sampling_count = max_sampling_count) after
+                # the last waypoint reache
+                if self.sampling_count >= self.args.sampling_frequency:
+                    # Reset the travel time and travel distance tracker upon RoA visit. Start recounting again.
+                    self.travel_dist = 0
+                    self.travel_time = 0
+                    
+                    while not combined_done:
+                         # Step up the simulator
+                        next_states, reward, combined_done, env_info = self._step()
+                        
+                        # Accumulate the next reward for the AST-SAC
+                        accumulated_reward += reward
+
+                        # Then, the next states become the next observations, the break the current looping
+                        next_observations = next_states
+                        
                 break
         
         return next_observations, accumulated_reward, combined_done, env_info
