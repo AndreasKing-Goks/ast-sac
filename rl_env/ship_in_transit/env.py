@@ -135,7 +135,7 @@ class MultiShipRLEnv(Env):
         self.AB_length = np.sqrt(AB_distance_n ** 2 + AB_distance_e ** 2)
         self.AB_segment_length       = self.AB_length / (self.args.sampling_frequency + 1)
         self.AB_north_segment_length = AB_distance_n / (self.args.sampling_frequency + 1)
-        self.AB_east_segment_length = AB_distance_e / (self.args.sampling_frequency + 1) 
+        self.AB_east_segment_length  = AB_distance_e / (self.args.sampling_frequency + 1) 
         
         AB_alpha = np.arctan2(AB_distance_e, AB_distance_n)
         AB_beta = np.pi/2 - AB_alpha 
@@ -196,9 +196,8 @@ class MultiShipRLEnv(Env):
         route_coord_e = self.e_base + self.e_s
         
         # Update new base for the next route coordinate
-        next_segment_factor = self.sampling_count + 2 
-        self.n_base = self.obs.auto_pilot.navigate.north[0] + (self.AB_north_segment_length * next_segment_factor) + self.n_s
-        self.e_base = self.obs.auto_pilot.navigate.east[0] + (self.AB_east_segment_length * next_segment_factor) + self.e_s
+        self.n_base = route_coord_n + self.AB_north_segment_length
+        self.e_base = route_coord_e + self.AB_east_segment_length
         
         # Repack into simulation input
         intermediate_waypoints = [route_coord_n, route_coord_e]

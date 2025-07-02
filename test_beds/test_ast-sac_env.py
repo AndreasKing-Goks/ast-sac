@@ -464,36 +464,42 @@ if test3:
     # Do it 4 times
     intermediate_waypoint_list = []
 
+    print('sampling count before reset:', expl_env.wrapped_env.sampling_count)
+    
     action = [np.deg2rad(0)]
+    env.sampling_count += 1
+    print('sampling count after first step:', expl_env.wrapped_env.sampling_count)
     print('action 1 in degree:', action[0])
     print('scoping angle 1 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
-    env.sampling_count += 1
     print('IW1:', intermediate_waypoint)
 
     action = [np.deg2rad(0)]
+    env.sampling_count += 1
+    print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
     print('action 2 in degree:', action[0])
     print('scoping angle 2 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
-    env.sampling_count += 1
     print('IW2:', intermediate_waypoint)
 
     action = [np.deg2rad(0)]
+    env.sampling_count += 1
+    print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
     print('action 3 in degree:', action[0])
     print('scoping angle 3 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
-    env.sampling_count += 1
     print('IW3:', intermediate_waypoint)
 
     action = [np.deg2rad(0)]
+    env.sampling_count += 1
+    print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
     print('action 4 in degree:', action[0])
     print('scoping angle 4 in degree:', np.rad2deg(action[0]))
     intermediate_waypoint = env.get_intermediate_waypoints(action)
     intermediate_waypoint_list.append(intermediate_waypoint)
-    env.sampling_count += 1
     print('IW4:', intermediate_waypoint)
 
     # Plot the points
