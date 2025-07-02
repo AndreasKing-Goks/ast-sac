@@ -53,6 +53,9 @@ class RewardTracker:
         self.from_obs_ship.append(r_obs_ship_grounding + r_obs_ship_nav_failure)
         self.total.append(r_total)
         
+    def update_r_total_only(self, r_total):
+        self.total.append(r_total)
+        
 def get_reward_and_env_info(env_args,  
                             reward_tracker:RewardTracker,
                             normalize_reward=False, 
@@ -61,13 +64,11 @@ def get_reward_and_env_info(env_args,
     env_args contains:
     - assets: To get the simulation states for both ship under test and obstacle ship(s)
     - map_obj: To get the positional information based on the map object used for the simulator
-    - is_sampling_failure: Info about the validity of action sampling. Has to be evaluated outside of the reward functions because 
-                           this function evaluation is done before _step()
     - travel_dist, traj_segment_length, travel_time:
       To get the information about obstacle ship navigational failure potential
     '''
     ## Unpack env_args
-    assets, map_obj, is_sampling_failure, travel_dist, traj_segment_length, travel_time = env_args
+    assets, map_obj, travel_dist, traj_segment_length, travel_time = env_args
     
     ## Unpack the ship assets
     test, obs = assets
@@ -155,11 +156,8 @@ def get_reward_and_env_info(env_args,
         normalizing_factor = 1 # Not normalized
     current_acc_reward = np.sum(current_acc_reward_list) / normalizing_factor
     
-    # Compute false intermediate waypoint sampling reward. Get the termination status
-    r_obs_ship_IW_sampling_failure, termination_6 = obs_ship_IW_sampling_failure_reward(current_acc_reward, is_sampling_failure)
-    
     # GET THE TOTAL REWARD FOR ONE STEP
-    r_total = r_obs_ship_IW_sampling_failure
+    r_total = current_acc_reward
     
     ## GET THE TERMINATION AND STOP OBSTACLE FLAG FOR NON-REWARD EVALUATION FUNCTION
     # Compute the necessary argument
@@ -168,13 +166,13 @@ def get_reward_and_env_info(env_args,
     
     ## Get the termination status for a non meaningful end
     # Ship under test reaches endpoint or goes outside the map
-    termination_7 = is_reaches_endpoint(test_route_end, test_pos)
-    termination_8 = is_pos_outside_horizon(map_obj, test_pos, test_ship_length)
+    termination_6 = is_reaches_endpoint(test_route_end, test_pos)
+    termination_7 = is_pos_outside_horizon(map_obj, test_pos, test_ship_length)
     
     # Obstacle ship reaches endpoint or goes outside the map
-    termination_9 = is_reaches_endpoint(obs_route_end, obs_pos)
-    termination_10 = is_pos_outside_horizon(map_obj, obs_pos, obs_ship_length)
-    termination_11 = is_within_simu_time_limit(test) # Following ship under test
+    termination_8 = is_reaches_endpoint(obs_route_end, obs_pos)
+    termination_9 = is_pos_outside_horizon(map_obj, obs_pos, obs_ship_length)
+    termination_10 = is_within_simu_time_limit(test) # Following ship under test
     
     # Track the reward evolution
     reward_log.update(r_ship_collision / normalizing_factor,
@@ -217,31 +215,26 @@ def get_reward_and_env_info(env_args,
         env_info['test_ship_stop'] = False
         env_info['obs_ship_stop'] = True
     if termination_6:
-        env_info['events'].append('Learning agent samples false intermediate waypoints!')
-        env_info['terminal'] = True
-        env_info['test_ship_stop'] = False
-        env_info['obs_ship_stop'] = False
-    if termination_7:
         env_info['events'].append('Ship under test reaches its final destination!')
         env_info['terminal'] = False
         env_info['test_ship_stop'] = True
         env_info['obs_ship_stop'] = False
-    if termination_8:
+    if termination_7:
         env_info['events'].append('Ship under test goes outside the map horizon!')
         env_info['terminal'] = False
         env_info['test_ship_stop'] = True
         env_info['obs_ship_stop'] = False
-    if termination_9:
+    if termination_8:
         env_info['events'].append('Obstacle ship reaches its final destination!')
         env_info['terminal'] = False
         env_info['test_ship_stop'] = False
         env_info['obs_ship_stop'] = True
-    if termination_10:
+    if termination_9:
         env_info['events'].append('Obstacle ship goes outside the map horizon!')
         env_info['terminal'] = False
         env_info['test_ship_stop'] = False
         env_info['obs_ship_stop'] = True
-    if termination_11:
+    if termination_10:
         env_info['events'].append('Simulation reaches its time limit')
         env_info['terminal'] = False
         env_info['test_ship_stop'] = True

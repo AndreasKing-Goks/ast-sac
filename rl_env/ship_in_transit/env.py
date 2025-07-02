@@ -17,7 +17,9 @@ from rl_env.ship_in_transit.evaluation.termination_flags import get_termination_
 from rl_env.ship_in_transit.evaluation import check_condition
 from rl_env.ship_in_transit.sub_systems.sbmpc import SBMPC
 
-from rl_env.ship_in_transit.evaluation.reward_function import RewardTracker, get_reward_and_env_info
+from rl_env.ship_in_transit.evaluation.reward_function import (RewardTracker, 
+                                                               get_reward_and_env_info,
+                                                               obs_ship_IW_sampling_failure_reward) 
 
 from dataclasses import dataclass, field
 from typing import Union, List
@@ -127,6 +129,9 @@ class MultiShipRLEnv(Env):
         
         # Set up the Reward Tracker
         self.reward_tracker = RewardTracker()
+        
+        # Set up ast-sac results tracker
+        self.init_ast_sac_results_snapshot()
     
     def init_get_intermediate_waypoints(self):
         # Initiate parameter for intermediate waypoint sampler
@@ -155,6 +160,20 @@ class MultiShipRLEnv(Env):
         self.travel_time_record= []
         self.travel_dist = 0 # Set to 0 after sampling an intermediate waypoint
         self.travel_time = 0 # Set to 0 after sampling an intermediate waypoint
+    
+    def init_ast_sac_results_snapshot(self):
+        '''
+            Initialize the ast-sac results snapshot.
+            Useful for step() return values when is_sampling_failure() is True.
+        '''
+        self.next_observations = self.initial_states
+        self.accumulated_rewards = 0
+        self.env_info = {
+                        'events'            : [],
+                        'terminal'          : False,
+                        'test_ship_stop'    : False,
+                        'obs_ship_stop'     : False,
+                        }
     
     def normalize_action(self, a_real):
         '''
@@ -524,8 +543,7 @@ class MultiShipRLEnv(Env):
         
         return intermediate_waypoints
     
-    def _step(self, 
-              is_sampling_failure=False):
+    def _step(self):
         ''' 
             The method is used for stepping up the simulator for all of the assets
             
@@ -564,7 +582,7 @@ class MultiShipRLEnv(Env):
         self.states = next_states 
         
         # Arguments for evaluation function
-        env_args = (self.assets, self.map, is_sampling_failure, self.travel_dist, self.AB_segment_length, self.travel_time)
+        env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
         
         # Get the reward, and the termination flags using the intermediate waypoints
         reward, env_info = get_reward_and_env_info(env_args, 
@@ -623,12 +641,33 @@ class MultiShipRLEnv(Env):
             # Set the obstacle ship to use the action and get the intermediate waypoints
             intermediate_waypoints = self.obs_ship_uses_scoping_angle(scoping_angle)
             
+            # Then record the time when the obstacle ship sample the scoping angle
+            self.waypoint_sampling_times.append(self.obs.ship_model.int.time)
+            
             # Then we check if the waypoint sampling is correct or not
             is_sampling_failure = any([check_condition.is_route_inside_obstacles(self.map, intermediate_waypoints),
                                        check_condition.is_route_outside_horizon(self.map, intermediate_waypoints)])
             
-            # Then record the time when the obstacle ship sample the scoping angle
-            self.waypoint_sampling_times.append(self.obs.ship_model.int.time)
+            # If sampling failure happened, stop the simulator, then used the snapshots of AST-SAC
+            # results as the output
+            if is_sampling_failure:
+                
+                # Get the snapshots, update the env_info, and set combined_done as True
+                next_observations = self.next_observations
+                accumulated_reward, _ = obs_ship_IW_sampling_failure_reward(accumulated_reward, 
+                                                                            is_sampling_failure,
+                                                                            termination_multiplier=0.5)
+                combined_done = True
+                env_info = self.env_info
+                env_info['events'].append('Learning agent samples false intermediate waypoints!')
+                env_info['terminal'] = True
+                env_info['test_ship_stop'] = False
+                env_info['obs_ship_stop'] = False
+                
+                # Update the reward tracker
+                self.reward_tracker.update_r_total_only(accumulated_reward)
+                
+                return next_observations, accumulated_reward, combined_done, env_info
         
         # If reaching RoA, not done, and within simulation time limit do stepping with intermediate waypoints
         # If not, just step the simulator
@@ -652,13 +691,19 @@ class MultiShipRLEnv(Env):
             if combined_done:
                 # Then, the next states become the next observations, the break the current looping
                 next_observations = next_states
+                
+                # Record the ast-sac results snapshots
+                # Increment the accumulated rewards throughout the whole episodes
+                self.next_observations = next_observations
+                self.accumulated_rewards += accumulated_reward
+                self.env_info = env_info
+                
                 break
             
             # If finally reach radius of acceptance and intermediate waypoints is available, do final step 
-            # with action included to get the reward and termination status
             if is_reach_roa and intermediate_waypoints:
                 # Step with intermediate_waypoints
-                next_states, reward, combined_done, env_info = self._step(is_sampling_failure)
+                next_states, reward, combined_done, env_info = self._step()
                 
                 # Then, accumulate the next reward for the AST-SAC
                 accumulated_reward += reward
@@ -683,7 +728,11 @@ class MultiShipRLEnv(Env):
 
                         # Then, the next states become the next observations, the break the current looping
                         next_observations = next_states
-                        
+                    
+                    # Record the ast-sac results snapshots
+                    self.next_observations = next_observations
+                    self.accumulated_rewards = accumulated_reward
+                    self.env_info = env_info
                 break
         
         return next_observations, accumulated_reward, combined_done, env_info

@@ -74,7 +74,7 @@ def is_pos_inside_obstacles(map_obj:PolygonObstacle,
     for hard_point in hard_points:
         if map_obj.if_pos_inside_obstacles(hard_point[0], hard_point[1]):
             is_inside =  True
-      
+    
     return is_inside
     
 def is_route_outside_horizon(map_obj:PolygonObstacle,
