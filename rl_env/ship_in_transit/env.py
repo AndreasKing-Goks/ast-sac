@@ -546,11 +546,6 @@ class MultiShipRLEnv(Env):
     def _step(self):
         ''' 
             The method is used for stepping up the simulator for all of the assets
-            
-            The _step() function gets is_sampling_failure to get the reward and termination status
-            
-            is_sampling_failure is evaluated outside the reward function, for every step() function
-            after action sampling
         '''        
         # Do test ship step
         test_next_state = self.test_step()
@@ -642,7 +637,8 @@ class MultiShipRLEnv(Env):
             intermediate_waypoints = self.obs_ship_uses_scoping_angle(scoping_angle)
             
             # Then record the time when the obstacle ship sample the scoping angle
-            self.waypoint_sampling_times.append(self.obs.ship_model.int.time)
+            # Sampling time happened 1 time step before the current time
+            self.waypoint_sampling_times.append(self.obs.ship_model.int.time - self.obs.ship_model.int.dt)
             
             # Then we check if the waypoint sampling is correct or not
             is_sampling_failure = any([check_condition.is_route_inside_obstacles(self.map, intermediate_waypoints),
@@ -683,6 +679,11 @@ class MultiShipRLEnv(Env):
             east_position = self.obs.ship_model.east
             obs_pos = [north_position, east_position]
 
+            ## THIS IS REQUIRED HERE
+            # If combined_done break the while loop when the simulator encounters terminal condition.
+            # However the while loop need to be broken as well if is_reach_roa is True.
+            # Because when the ship reach the new RoA, it need to take a new action (intermediate waypoints)
+            # before the next integration process.
             is_reach_roa = check_condition.is_reach_radius_of_acceptance(self.obs, 
                                                                          obs_pos,
                                                                          r_o_a=self.args.radius_of_acceptance)
@@ -700,7 +701,7 @@ class MultiShipRLEnv(Env):
                 
                 break
             
-            # If finally reach radius of acceptance and intermediate waypoints is available, do final step 
+            # If finally reach radius of acceptance,
             if is_reach_roa and intermediate_waypoints:
                 # Step with intermediate_waypoints
                 next_states, reward, combined_done, env_info = self._step()

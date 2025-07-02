@@ -23,7 +23,7 @@ from ast_sac.torch.sac.sac import SACTrainer
 from ast_sac.torch.networks.mlp import ConcatMlp
 from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
-from utils.animate import ShipTrajectoryAnimator
+from utils.animate import ShipTrajectoryAnimator, RLShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 from utils.center_plot import center_plot_window
 
@@ -657,7 +657,7 @@ if test7:
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        # action = np.deg2rad(0)
+        # action = np.deg2rad(-30)
         print('Third action', np.rad2deg(env.denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step upd
         print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
@@ -686,13 +686,156 @@ if test7:
     print('---')
     print(env_info['events'])
 
-    # Create a plot 1 single figure and axis instead of a grid
+    # Plot 1: Overall process plot
     plot_1 = False
-    plot_1 = True
+    # plot_1 = True
 
     # Plot 2: Status plot
     plot_2 = False
     # plot_2 = True
+    
+    # Plot 3: Reward plots
+    plot_3 = False
+    # plot_3 = True
+    
+    # Plot 4: Cumulative rewards plots
+    plot_4 = False
+    # plot_4 = True
+    
+    # For animation
+    animation = False
+    animation = True
+    
+
+    if animation:
+        test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
+        obs_route = {'east': obs.auto_pilot.navigate.east, 'north': obs.auto_pilot.navigate.north}
+        waypoint_sampling_times = expl_env.wrapped_env.waypoint_sampling_times
+        waypoints = list(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north))
+        map_obj = map
+        radius_of_acceptance = args.radius_of_acceptance
+        timestamps = test.time_list
+        interval = args.time_step * 1000
+        test_drawer=test.ship_model.draw
+        obs_drawer=obs.ship_model.draw
+        test_headings=ts_results_df["yaw angle [deg]"]
+        obs_headings=os_results_df["yaw angle [deg]"]
+        
+        # Do animation
+        animator = RLShipTrajectoryAnimator(ts_results_df,
+                                            os_results_df,
+                                            test_route,
+                                            obs_route,
+                                            waypoint_sampling_times,
+                                            waypoints,
+                                            map_obj,
+                                            radius_of_acceptance,
+                                            timestamps,
+                                            interval,
+                                            test_drawer,
+                                            obs_drawer,
+                                            test_headings,
+                                            obs_headings)
+
+        ani_ID = 1
+        ani_dir = os.path.join('animation', 'comparisons')
+        filename  = "trajectory.mp4"
+        video_path = os.path.join(ani_dir, filename)
+        fps = 120
+        
+        # Create the output directory if it doesn't exist
+        os.makedirs(ani_dir, exist_ok=True)
+        
+        # animator.save(video_path, fps)
+        animator.run(fps)
+        
+    # Create a No.4 2x4 grid for accumulated reward subplots
+    if plot_4:
+        fig_4, axes = plt.subplots(nrows=2, ncols=4, figsize=(16, 6))
+        plt.figure(fig_4.number)
+        axes = axes.flatten()
+        
+        # Center plotting
+        center_plot_window()
+
+        titles = [
+            'Ship under test grounding rewards (cumulative)',
+            'Ship under test navigational failure rewards (cumulative)',
+            'Rewards from ship under test (cumulative)',
+            'Ship collision rewards (cumulative)',
+            'Obstacle ship grounding rewards (cumulative)',
+            'Obstacle ship navigational failure rewards (cumulative)',
+            'Rewards from obstacle ship (cumulative)',
+            'Total rewards obtained (cumulative)'
+        ]
+
+        reward_series = [
+            expl_env.wrapped_env.reward_tracker.test_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.test_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_test_ship,
+            expl_env.wrapped_env.reward_tracker.ship_collision,
+            expl_env.wrapped_env.reward_tracker.obs_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.obs_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_obs_ship,
+            expl_env.wrapped_env.reward_tracker.total,
+        ]
+
+        for i in range(8):
+            cumulative_reward = np.cumsum(reward_series[i])
+            axes[i].plot(cumulative_reward)
+            axes[i].set_title(titles[i], fontsize=10)
+            axes[i].set_xlabel('Time (s)', fontsize=8)
+            axes[i].set_ylabel('Cumulative Rewards', fontsize=8)
+            axes[i].tick_params(axis='both', labelsize=7)
+            axes[i].grid(color='0.8', linestyle='-', linewidth=0.3)
+            axes[i].set_xlim(left=0)
+
+        plt.tight_layout()
+        plt.subplots_adjust(wspace=0.3, hspace=0.4)
+
+    
+    # Create a No.3 2x4 grid for subplots
+    if plot_3:
+        fig_3, axes = plt.subplots(nrows=2, ncols=4, figsize=(16, 6))  # Slightly shorter height
+        plt.figure(fig_3.number)
+        axes = axes.flatten()
+
+        # Center plotting
+        center_plot_window()
+        
+        titles = [
+            'Ship under test grounding rewards',
+            'Ship under test navigational failure rewards',
+            'Rewards from ship under test',
+            'Ship collision rewards',
+            'Obstacle ship grounding rewards',
+            'Obstacle ship navigational failure rewards',
+            'Rewards from obstacle ship',
+            'Total rewards obtained'
+        ]
+
+        reward_series = [
+            expl_env.wrapped_env.reward_tracker.test_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.test_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_test_ship,
+            expl_env.wrapped_env.reward_tracker.ship_collision,
+            expl_env.wrapped_env.reward_tracker.obs_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.obs_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_obs_ship,
+            expl_env.wrapped_env.reward_tracker.total,
+        ]
+
+        for i in range(8):
+            axes[i].plot(reward_series[i])
+            axes[i].set_title(titles[i], fontsize=10)
+            axes[i].set_xlabel('Time (s)', fontsize=8)
+            axes[i].set_ylabel('Rewards', fontsize=8)
+            axes[i].tick_params(axis='both', labelsize=7)
+            axes[i].grid(color='0.8', linestyle='-', linewidth=0.3)
+            axes[i].set_xlim(left=0)
+
+        plt.tight_layout()
+        plt.subplots_adjust(wspace=0.3, hspace=0.4)  # Optional: fine-tune spacing
 
     # Create a No.2 3x4 grid for subplots
     if plot_2:

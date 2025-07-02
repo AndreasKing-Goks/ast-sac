@@ -278,6 +278,7 @@ class RLShipTrajectoryAnimator:
         self.obs_drawer = obs_drawer
         self.test_yaw_rad = np.radians(test_headings) if test_headings is not None else None
         self.obs_yaw_rad = np.radians(obs_headings) if obs_headings is not None else None
+        self.visible_waypoint_indices = set()
 
         # Prepare the figure
         self.fig, self.ax = plt.subplots(figsize=(10, 5.5))
@@ -409,7 +410,7 @@ class RLShipTrajectoryAnimator:
         # Reveal intermediate waypoints progressively
         for idx, reached_time in enumerate(self.waypoint_sampling_times):
             # Skip if already added
-            if current_time >= reached_time and (idx + 1) >= len(self.waypoint_markers) - 1:
+            if current_time >= reached_time and idx not in self.visible_waypoint_indices:
                 east, north = self.intermediate_waypoints[idx]
 
                 marker, = self.ax.plot(east, north, 'x', color='red', markersize=10)
@@ -424,6 +425,8 @@ class RLShipTrajectoryAnimator:
                 )
                 self.ax.add_patch(circle)
                 self.waypoint_circles.append(circle)
+                
+                self.visible_waypoint_indices.add(idx)
 
         self.time_text.set_text(f"Time: {current_time:.1f} s")
 
