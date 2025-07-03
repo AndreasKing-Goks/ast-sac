@@ -132,7 +132,7 @@ class SBMPC:
         """
         cost = np.inf
         cost_i = 0
-        colav_active = False
+        self.active = False
         d = np.zeros(2)
 
         # print(do_list)
@@ -156,9 +156,9 @@ class SBMPC:
             d[1] = obs.y_[0] - os_state[1]
             
             if np.linalg.norm(d) < self._params.D_INIT_:
-                colav_active = True
+                self.active = True
 
-        if not colav_active:
+        if not self.active:
             u_os_best = 1
             chi_os_best = 0
             self._params.P_ca_last_ = 1
@@ -181,9 +181,6 @@ class SBMPC:
 
         self._params.P_ca_last_ = u_os_best
         self._params.Chi_ca_last_ = chi_os_best
-
-        # To be used as a flag
-        self.active = colav_active
 
         return u_os_best, chi_os_best
     
