@@ -132,6 +132,10 @@ class MultiShipRLEnv(Env):
         
         # Set up ast-sac results tracker
         self.init_ast_sac_results_snapshot()
+        
+        ## CONTAINERS FOR ANIMATION
+        self.is_collision_imminent_list = []
+        self.is_collision_list = []
     
     def init_get_intermediate_waypoints(self):
         # Initiate parameter for intermediate waypoint sampler
@@ -271,6 +275,10 @@ class MultiShipRLEnv(Env):
         # Reset the waypoint sampling time tracker
         self.waypoint_sampling_times = []
         
+        # Reset the containers for anmiation
+        self.is_collision_imminent_list = []
+        self.is_collision_list = []
+        
         # Place the assets in the simulator
         self.init_step(action)
         
@@ -365,7 +373,6 @@ class MultiShipRLEnv(Env):
                     os_state=os_state,
                     do_list=do_list
                 )
-            
             # Note: self.sbmpc.is_stephen_useful() -> bool can be used to know whether or not the SBMPC colav algorithm is currently active
         #################################################################################################### 
 
@@ -387,7 +394,7 @@ class MultiShipRLEnv(Env):
         ###################################################################################################
         if self.collav == 'simple':            
             collision_risk = check_condition.is_collision_imminent(self.states[0:2], self.states[3:5])
-                
+            
             if collision_risk:
                 # Reduce throttle
                 throttle *= 0.5
@@ -546,7 +553,7 @@ class MultiShipRLEnv(Env):
     def _step(self):
         ''' 
             The method is used for stepping up the simulator for all of the assets
-        '''        
+        '''      
         # Do test ship step
         test_next_state = self.test_step()
         
@@ -591,6 +598,16 @@ class MultiShipRLEnv(Env):
             self.obs.stop_flag = True
         
         combined_done = terminal or done
+        
+        # FOR ANIMATION CONTAINERS
+        test_pos = (self.test.ship_model.north, self.test.ship_model.east)
+        obs_pos = (self.obs.ship_model.north, self.obs.ship_model.east)
+        if self.collav == 'simple':
+            self.is_collision_imminent_list.append(check_condition.is_collision_imminent(test_pos, obs_pos))
+        elif self.collav == 'sbmpc':
+            self.is_collision_imminent_list.append(self.sbmpc.is_stephen_useful())
+            
+        self.is_collision_list.append(check_condition.is_ship_collision(test_pos, obs_pos))
         
         return next_states, reward, combined_done, env_info
     

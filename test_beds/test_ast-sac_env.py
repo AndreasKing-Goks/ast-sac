@@ -327,7 +327,7 @@ time_since_last_ship_drawing = 30
 # Set Collav Mode
 collav_mode = None
 collav_mode = 'simple'
-collav_mode = 'sbmpc'
+# collav_mode = 'sbmpc'
 
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
 env = MultiShipRLEnv(assets=assets,
@@ -643,28 +643,28 @@ if test7:
     policy.to(ptu.device)                                                                   # Sent policy networks to device
     
     action, _ = policy.get_action(init_observations)                                        # Get an action
-    # action = np.deg2rad(0)
+    action = np.deg2rad(0)
     print('First action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        # action = np.deg2rad(0)
+        action = np.deg2rad(0)
         print('Second action', np.rad2deg(env.denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        # action = np.deg2rad(0)
+        action = np.deg2rad(0)
         print('Third action', np.rad2deg(env.denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step upd
         print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        # action = np.deg2rad(0)
+        action = np.deg2rad(0)
         print('Fourth action', np.rad2deg(env.denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
@@ -705,7 +705,6 @@ if test7:
     # For animation
     animation = False
     animation = True
-    
 
     if animation:
         test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
@@ -720,6 +719,8 @@ if test7:
         obs_drawer=obs.ship_model.draw
         test_headings=ts_results_df["yaw angle [deg]"]
         obs_headings=os_results_df["yaw angle [deg]"]
+        is_collision_imminent_list = expl_env.wrapped_env.is_collision_imminent_list
+        is_collision_list = expl_env.wrapped_env.is_collision_list
         
         # Do animation
         animator = RLShipTrajectoryAnimator(ts_results_df,
@@ -735,13 +736,15 @@ if test7:
                                             test_drawer,
                                             obs_drawer,
                                             test_headings,
-                                            obs_headings)
+                                            obs_headings,
+                                            is_collision_imminent_list,
+                                            is_collision_list)
 
         ani_ID = 1
         ani_dir = os.path.join('animation', 'comparisons')
         filename  = "trajectory.mp4"
         video_path = os.path.join(ani_dir, filename)
-        fps = 120
+        fps = 480
         
         # Create the output directory if it doesn't exist
         os.makedirs(ani_dir, exist_ok=True)

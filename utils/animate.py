@@ -244,7 +244,9 @@ class RLShipTrajectoryAnimator:
                  waypoint_sampling_times, waypoints, map_obj,
                  radius_of_acceptance, timestamps, interval=500,
                  test_drawer=None, obs_drawer=None,
-                 test_headings=None, obs_headings=None):
+                 test_headings=None, obs_headings=None,
+                 is_collision_imminent_list=None,
+                 is_collision_list=None):
         """
         Initializes the ShipTrajectoryAnimator.
 
@@ -283,6 +285,10 @@ class RLShipTrajectoryAnimator:
         # Prepare the figure
         self.fig, self.ax = plt.subplots(figsize=(10, 5.5))
         self.setup_plot()
+        
+        # For warning purposes
+        self.is_collision_imminent_list = None if is_collision_imminent_list == [] else is_collision_imminent_list
+        self.is_collision_list = None if is_collision_list == [] else is_collision_list
 
     def setup_plot(self):
         # Dynamic time counter
@@ -340,6 +346,16 @@ class RLShipTrajectoryAnimator:
                 self.ax.text(east, north + 200, 'START', color='red', ha='center', fontsize=10)
             elif idx == 1:
                 self.ax.text(east, north + 200, 'GOAL', color='green', ha='center', fontsize=10)
+        
+        # Dynamic time counter
+        self.time_text = self.ax.text(0.01, 0.97, '', transform=self.ax.transAxes,
+                                    fontsize=12, verticalalignment='top')
+
+        # Status alert textbox (collision or COLAV)
+        self.status_text = self.ax.text(0.01, 0.92, '', transform=self.ax.transAxes,
+                                        fontsize=12, verticalalignment='top',
+                                        horizontalalignment='left',
+                                        fontweight='bold')
 
 
     def init_animation(self):
@@ -429,11 +445,25 @@ class RLShipTrajectoryAnimator:
                 self.visible_waypoint_indices.add(idx)
 
         self.time_text.set_text(f"Time: {current_time:.1f} s")
-
+        
+        # Update status text
+        status = ""
+        if self.is_collision_list is not None and i < len(self.is_collision_list):
+            if self.is_collision_list[i]:
+                status = "SHIP COLLISION!"
+                self.status_text.set_text(status)
+                self.status_text.set_color('red')
+            elif self.is_collision_imminent_list is not None and self.is_collision_imminent_list[i]:
+                status = "SUT COLAV activated!"
+                self.status_text.set_text(status)
+                self.status_text.set_color('blue')
+            else:
+                self.status_text.set_text("")
+        
         return (self.test_ship_line, self.obs_ship_line,
                 *self.waypoint_markers, *self.waypoint_circles,
                 self.test_ship_outline, self.obs_ship_outline,
-                self.time_text)
+                self.time_text, self.status_text)
 
     def run_realtime(self):
         # Create animation
