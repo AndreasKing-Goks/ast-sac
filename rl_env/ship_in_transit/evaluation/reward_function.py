@@ -121,12 +121,6 @@ def get_reward_and_env_info(env_args,
                               is_sample_travel_time_too_long(travel_time),
                               is_ship_navigation_failure(obs_e_ct, e_tol=obs_e_ct_threshold)])
     
-    # if intermediate_waypoints:
-    #     is_sampling_failure = any([is_route_inside_obstacles(map_obj, intermediate_waypoints),
-    #                                is_route_outside_horizon(map_obj, intermediate_waypoints)])
-    # else:
-    #     is_sampling_failure = False
-    
     # Compute ships collision reward. Get the termination status
     r_ship_collision, termination_1 = ships_collision_reward(test_to_obs_distance, encounter_type, is_collision)
     
@@ -136,7 +130,7 @@ def get_reward_and_env_info(env_args,
     # Compute test ship navigation failure reward. get the termination status
     r_test_ship_nav_failure, termination_3 = test_ship_nav_failure_reward(test_e_ct, 
                                                                           is_test_nav_failure,
-                                                                          e_ct_threshold=obs_e_ct_threshold)
+                                                                          e_ct_threshold=test_e_ct_threshold)
     
     # Compute obstacle ship grounding reward. Get the termination status
     r_obs_ship_grounding, termination_4 = obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding)
@@ -313,13 +307,17 @@ def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termi
     - The reward is range between [0, 1]
     - We get a reward closer to 1 when the ship_ground_distance is closer to 0
     - The greater ship_ground_distance is, the lower the reward
-    - As the ship_ground_distance is greater than 2 km, reward = 0
+    - As the ship_ground_distance is greater than 1 km, reward = 0
     - Terminate the simulation if the obstacle ship experiences grounding
     
     Note: Reward Design parameter is obtained by self tune process
     '''
     # Initiate reward designs, termination status, clipping distance, and initial reward
-    base_reward = RewardDesign4(target=0, offset_param=750000)
+    # base_reward = RewardDesign4(target=0, offset_param=750000)      # For distance threshold of 2km
+    # base_reward = RewardDesign4(target=0, offset_param=500000)      # For distance threshold of 1.5km
+    base_reward = RewardDesign4(target=0, offset_param=175000)      # For distance threshold of 1km
+    # base_reward = RewardDesign4(target=0, offset_param=50000)       # For distance threshold of 0.5km
+    # base_reward = RewardDesign4(target=0, offset_param=12500)       # For distance threshold of 0.25km
     termination = False
     clipping_distance = 2000
     reward = 0
@@ -342,6 +340,7 @@ def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold 
     * Cross track error is ALWAYS a positive value
     The reward design is based on Reward Design 3:
     - The reward is range between [0, 1]
+    - The reward is starts becoming significant when the cross track error goes above 0.5km m
     - We get a reward closer to 1 when the cross track error is closer to 1 km
     - The greater cross track error is, the higher the reward
     - Navigation failure happens when the ship under test cross track error goes beyond 1 km
@@ -350,7 +349,7 @@ def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold 
     Note: Reward Design parameter is obtained by self tune process
     '''
     # Initiate cross track error threshold, reward designs, termination status, and initial reward
-    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=150000)
+    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=50000)
     termination = False
     reward = 0
     
@@ -371,13 +370,17 @@ def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding, terminat
     - The reward is range between [-1, 0]
     - We get a reward closer to -1 when the ship_ground_distance is closer to 0
     - The greater ship_ground_distance is, the bigger the reward
-    - As the ship_ground_distance is greater than 2 km m, reward = 0
+    - As the ship_ground_distance is greater than 1 km, reward = 0
     - Terminate the simulation if the obstacle ship experiences grounding
     
     Note: Reward Design parameter is obtained by self tune process
     '''
     # Initiate reward designs, termination status, clipping distance, and initial reward
-    base_reward = RewardDesign4(target=0, offset_param=750000)
+    # base_reward = RewardDesign4(target=0, offset_param=750000)      # For distance threshold of 2km
+    # base_reward = RewardDesign4(target=0, offset_param=500000)      # For distance threshold of 1.5km
+    # base_reward = RewardDesign4(target=0, offset_param=175000)      # For distance threshold of 1km
+    base_reward = RewardDesign4(target=0, offset_param=50000)       # For distance threshold of 0.5km
+    # base_reward = RewardDesign4(target=0, offset_param=12500)       # For distance threshold of 0.25km
     termination = False
     clipping_distance = 2000
     reward = 0
@@ -400,6 +403,7 @@ def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 5
     * Cross track error is ALWAYS a positive value
     The reward design is based on Reward Design 3:
     - The reward is range between [-1, 0]
+    - The reward is starts becoming significant when the cross track error goes above 250 m
     - We get a reward closer to -1 when the cross track error is closer to 500 m
     - The greater cross track error is, the higher the reward
     - Navigation failure happens when the obstacle ship failed to reach the next waypoint after 
@@ -409,7 +413,7 @@ def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 5
     Note: Reward Design parameter is obtained by self tune process
     '''
     # Initiate cross track error threshold, reward designs and termination status
-    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=45000)
+    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=12500)
     termination = False
     
     # Compute reward
