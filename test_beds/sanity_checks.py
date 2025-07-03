@@ -222,7 +222,10 @@ obs_ship = ShipModelAST(ship_config=ship_config,
 map_data = [
     [(0,10000), (10000,10000), (9200,9000) , (7600,8500), (6700,7300), (4900,6500), (4300, 5400), (4700, 4500), (6000,4000), (5800,3600), (4200, 3200), (3200,4100), (2000,4500), (1000,4000), (900,3500), (500,2600), (0,2350)],   # Island 1 
     [(10000, 0), (11500,750), (12000, 2000), (11700, 3000), (11000, 3600), (11250, 4250), (12300, 4000), (13000, 3800), (14000, 3000), (14500, 2300), (15000, 1700), (16000, 800), (17500,0)], # Island 2
-    [(15500, 10000), (16000, 9000), (18000, 8000), (19000, 7500), (20000, 6000), (20000, 10000)]
+    [(15500, 10000), (16000, 9000), (18000, 8000), (19000, 7500), (20000, 6000), (20000, 10000)],
+    [(5500, 5300), (6000,5000), (6800, 4500), (8000, 5000), (8700, 5500), (9200, 6700), (8000, 7000), (6700, 6300), (6000, 6000)],
+    [(15000, 5000), (14000, 5500), (12500, 5000), (14000, 4100), (16000, 2000), (15700, 3700)],
+    [(11000, 2000), (10300, 3200), (9000, 1500), (10000, 1000)]
     ]
 
 map = PolygonObstacle(map_data)
@@ -434,6 +437,8 @@ replay_buffer = EnvReplayBuffer(
 # algorithm.train()
 
 # print('-------------------------------------------------')
+
+# Check normalized_box_env() performance
 test1 = True
 test1 = False
 
@@ -445,6 +450,7 @@ if test1:
     print('Normalized box env:', action_space_norm_lo)
     print('-------------------------------------------------')
 
+# Check action space sampled directly from environment
 test2 = True
 test2 = False
 
@@ -456,6 +462,7 @@ if test2:
     print('Normalized box env:', action_norm)
     print('-------------------------------------------------')
 
+# Check get_intermediate_waypoints() function behaviour
 test3 = True
 test3 = False
 
@@ -541,6 +548,7 @@ if test3:
         plt.show()
     print('-------------------------------------------------')
 
+# Test policy action sampling
 test4 = True
 test4 = False
 
@@ -564,6 +572,7 @@ if test4:
     print('Sampled action using policy:', action)
     print('-------------------------------------------------')
 
+# Test the use of policy action sampling to step up the simulator
 test5 = True
 test5 = False
 
@@ -632,6 +641,7 @@ if test6:
 
     print('-------------------------------------------------')
 
+# Test manual step() function with action sampled by a policy
 test7 = True
 # test7 = False
 
@@ -643,28 +653,28 @@ if test7:
     policy.to(ptu.device)                                                                   # Sent policy networks to device
     
     action, _ = policy.get_action(init_observations)                                        # Get an action
-    action = np.deg2rad(0)
+    # action = np.deg2rad(0)
     print('First action', np.rad2deg(env.denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        action = np.deg2rad(0)
+        # action = np.deg2rad(0)
         print('Second action', np.rad2deg(env.denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        action = np.deg2rad(0)
+        # action = np.deg2rad(0)
         print('Third action', np.rad2deg(env.denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step upd
         print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        action = np.deg2rad(0)
+        # action = np.deg2rad(0)
         print('Fourth action', np.rad2deg(env.denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
@@ -996,11 +1006,15 @@ if test7:
 
     print('-------------------------------------------------')
 
-# # # # Test ast_sac_rollout function() in MDPPathCollector.collect_new_paths
-# # # max_path_length = 1000
-# # # num_expl_steps_per_train_loop=1000
-# # # discard_incomplete_paths = False
-# # # paths = expl_path_collector.collect_new_paths(max_path_length=max_path_length,
-# # #                                               num_steps=num_expl_steps_per_train_loop,
-# # #                                               discard_incomplete_paths=discard_incomplete_paths)
-# # # print('-------------------------------------------------')
+# Test ast_sac_rollout function() in MDPPathCollector.collect_new_paths
+test8 = True 
+test8 = False
+
+if test8:
+    max_path_length = 1000
+    num_expl_steps_per_train_loop=1000
+    discard_incomplete_paths = False
+    paths = expl_path_collector.collect_new_paths(max_path_length=max_path_length,
+                                                num_steps=num_expl_steps_per_train_loop,
+                                                discard_incomplete_paths=discard_incomplete_paths)
+    print('-------------------------------------------------')
