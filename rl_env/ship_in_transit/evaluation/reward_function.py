@@ -114,7 +114,7 @@ def get_reward_and_env_info(env_args,
     is_obs_grounding = is_pos_inside_obstacles(map_obj, obs_pos, obs_ship_length)
     
     # Get navigation failure flags for both ship under test and obstacle ship
-    test_e_ct_threshold = 1000
+    test_e_ct_threshold = 3000
     obs_e_ct_threshold  = 500
     is_test_nav_failure = is_ship_navigation_failure(test_e_ct, e_tol=test_e_ct_threshold)
     is_obs_nav_failure = any([is_sample_travel_dist_too_far(travel_dist, traj_segment_length),
@@ -309,6 +309,7 @@ def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termi
     - The greater ship_ground_distance is, the lower the reward
     - As the ship_ground_distance is greater than 1 km, reward = 0
     - Terminate the simulation if the obstacle ship experiences grounding
+    - Ship under test needs to be within clipping distance from the land to activate the reward function
     
     Note: Reward Design parameter is obtained by self tune process
     '''
@@ -319,7 +320,7 @@ def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termi
     # base_reward = RewardDesign4(target=0, offset_param=50000)       # For distance threshold of 0.5km
     # base_reward = RewardDesign4(target=0, offset_param=12500)       # For distance threshold of 0.25km
     termination = False
-    clipping_distance = 2000
+    clipping_distance = 1000
     reward = 0
     
     # Compute reward
@@ -335,21 +336,21 @@ def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termi
 
     return reward, termination
 
-def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold = 1000, termination_multiplier=25.0):
+def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold = 3000, termination_multiplier=25.0):
     '''
     * Cross track error is ALWAYS a positive value
     The reward design is based on Reward Design 3:
     - The reward is range between [0, 1]
     - The reward is starts becoming significant when the cross track error goes above 0.5km m
-    - We get a reward closer to 1 when the cross track error is closer to 1 km
+    - We get a reward closer to 1 when the cross track error is closer to 3 km
     - The greater cross track error is, the higher the reward
-    - Navigation failure happens when the ship under test cross track error goes beyond 1 km
+    - Navigation failure happens when the ship under test cross track error goes beyond 3 km
     - When navigation failure happens, terminate the simulator
     
     Note: Reward Design parameter is obtained by self tune process
     '''
     # Initiate cross track error threshold, reward designs, termination status, and initial reward
-    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=100000)
+    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=1250000)
     termination = False
     reward = 0
     
@@ -372,6 +373,7 @@ def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding, terminat
     - The greater ship_ground_distance is, the bigger the reward
     - As the ship_ground_distance is greater than 1 km, reward = 0
     - Terminate the simulation if the obstacle ship experiences grounding
+    - Obstacle ship needs to be within clipping distance from the land to activate the reward function
     
     Note: Reward Design parameter is obtained by self tune process
     '''
@@ -382,7 +384,7 @@ def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding, terminat
     base_reward = RewardDesign4(target=0, offset_param=50000)       # For distance threshold of 0.5km
     # base_reward = RewardDesign4(target=0, offset_param=12500)       # For distance threshold of 0.25km
     termination = False
-    clipping_distance = 2000
+    clipping_distance = 1000
     reward = 0
     
     # Compute reward (negative for obstacle ship)

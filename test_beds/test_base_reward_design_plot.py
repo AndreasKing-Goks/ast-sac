@@ -35,12 +35,14 @@ x = np.linspace(x_min, x_max, 1000)
 designs = [
     RewardDesign1(target=50, offset_param=250),
     RewardDesign2(target=50, offset_param1=250, offset_param2=50),
-    RewardDesign3(target=1000, offset_param=100000),
-    RewardDesign4(target=0, offset_param=50000),
+    RewardDesign3(target=3000, offset_param=1250000),
+    RewardDesign4(target=0, offset_param=175000),
     RewardDesign5(target_bound_low=40, target_bound_high=60, offset_param=100),
     RewardDesign6(target1=30, target2=70, second_peak=0.8, flat_zone=0.5,
                   offset_param1=100, offset_param2=50, offset_param3=50, offset_param4=100)
 ]
+
+# RewardDesign3(target=e_ct_threshold, offset_param=100000) # For 1 km, 0.5 km trigger distance
 
 # Plotting figure to match the paper style (Fig. 2)
 fig, axs = plt.subplots(2, 3, figsize=(14, 6))
