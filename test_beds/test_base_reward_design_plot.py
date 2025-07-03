@@ -26,7 +26,7 @@ from rl_env.reward_designs import (
 
 # === Customizable boundaries for X axis ===
 x_min = 0
-x_max = 500
+x_max = 1000
 
 # Generate x values
 x = np.linspace(x_min, x_max, 1000)
@@ -35,8 +35,8 @@ x = np.linspace(x_min, x_max, 1000)
 designs = [
     RewardDesign1(target=50, offset_param=250),
     RewardDesign2(target=50, offset_param1=250, offset_param2=50),
-    RewardDesign3(target=500, offset_param=12500),
-    RewardDesign4(target=0, offset_param=500000),
+    RewardDesign3(target=1000, offset_param=100000),
+    RewardDesign4(target=0, offset_param=50000),
     RewardDesign5(target_bound_low=40, target_bound_high=60, offset_param=100),
     RewardDesign6(target1=30, target2=70, second_peak=0.8, flat_zone=0.5,
                   offset_param1=100, offset_param2=50, offset_param3=50, offset_param4=100)

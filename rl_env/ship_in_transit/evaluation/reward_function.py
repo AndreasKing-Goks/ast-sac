@@ -349,7 +349,7 @@ def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold 
     Note: Reward Design parameter is obtained by self tune process
     '''
     # Initiate cross track error threshold, reward designs, termination status, and initial reward
-    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=50000)
+    base_reward = RewardDesign3(target=e_ct_threshold, offset_param=100000)
     termination = False
     reward = 0
     

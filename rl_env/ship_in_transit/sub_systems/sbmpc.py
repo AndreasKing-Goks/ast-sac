@@ -17,8 +17,8 @@ class SBMPCParams:
     PHI_HO_: float = np.deg2rad(22.5)  # colregs angle -  head on [deg]
     PHI_CR_: float = np.deg2rad(68.5)  # colregs angle -  crossing [deg]
     KAPPA_: float = 0.0 # 10.0  # Weight for cost of COLREGs compliance (Rules 14 & 15, if both are satisfied it implies 13 is also satisfied)
-    K_P_: float = 25  # Weight for penalizing speed offset      # PLAY WITH THIS
-    K_CHI_: float = 30  # Weight for penalizing heading offset  # PLAY WITH THIS
+    K_P_: float = 25  # Weight for penalizing speed offset
+    K_CHI_: float = 30  # Weight for penalizing heading offset
     K_DP_: float = 20  # Weight for penalizing changes in speed offset
     K_DCHI_SB_: float = 20  # Weight for penalizing changes in heading offset in StarBoard situation
     K_DCHI_P_: float = 30  # Weight for penalizing changes in heading offset in Port situation
@@ -30,7 +30,7 @@ class SBMPCParams:
 
     Chi_ca_: np.array = field(
         default_factory=lambda: np.deg2rad(
-            np.array([-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0]) # Increase the up and down  boundary to make it more aggressive
+            np.array([-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0])
         )
     )  # control behaviors - course offset [deg]
     P_ca_: np.array = field(default_factory=lambda: np.array([0.4, 0.6, 0.8, 1.0]))  # control behaviors - speed factor
@@ -132,7 +132,7 @@ class SBMPC:
         """
         cost = np.inf
         cost_i = 0
-        colav_active = False
+        self.active = False
         d = np.zeros(2)
 
         # print(do_list)
@@ -156,9 +156,9 @@ class SBMPC:
             d[1] = obs.y_[0] - os_state[1]
             
             if np.linalg.norm(d) < self._params.D_INIT_:
-                colav_active = True
+                self.active = True
 
-        if not colav_active:
+        if not self.active:
             u_os_best = 1
             chi_os_best = 0
             self._params.P_ca_last_ = 1
@@ -181,9 +181,6 @@ class SBMPC:
 
         self._params.P_ca_last_ = u_os_best
         self._params.Chi_ca_last_ = chi_os_best
-
-        # To be used as a flag
-        self.active = colav_active
 
         return u_os_best, chi_os_best
     
@@ -315,6 +312,5 @@ class SBMPC:
     def rot2d(self, yaw: float, vec: np.ndarray):
         R = np.array([[-np.sin(yaw), np.cos(yaw)], [np.cos(yaw), np.sin(yaw)]])
         return R @ vec
-
 
 

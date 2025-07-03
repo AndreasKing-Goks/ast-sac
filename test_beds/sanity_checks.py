@@ -699,7 +699,7 @@ if test7:
 
     # Plot 1: Overall process plot
     plot_1 = False
-    plot_1 = True
+    # plot_1 = True
 
     # Plot 2: Status plot
     plot_2 = False
@@ -715,7 +715,7 @@ if test7:
     
     # For animation
     animation = False
-    # animation = True
+    animation = True
 
     if animation:
         test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
