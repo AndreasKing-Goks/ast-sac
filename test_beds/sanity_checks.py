@@ -329,8 +329,8 @@ time_since_last_ship_drawing = 30
 ################################### ENV SPACE ###################################
 # Set Collav Mode
 collav_mode = None
-# collav_mode = 'simple'
-# collav_mode = 'sbmpc'
+collav_mode = 'simple'
+collav_mode = 'sbmpc'
 
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
 env = MultiShipRLEnv(assets=assets,
@@ -654,29 +654,29 @@ if test7:
     policy.to(ptu.device)                                                                   # Sent policy networks to device
     
     action, _ = policy.get_action(init_observations)                                        # Get an action
-    action = np.deg2rad(0)
-    print('First action', np.rad2deg(env.denormalize_action(action)))
+    action = env.do_normalize_action(np.deg2rad(0))
+    print('First action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
     print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        action = np.deg2rad(0)
-        print('Second action', np.rad2deg(env.denormalize_action(action)))
+        action = env.do_normalize_action(np.deg2rad(0))
+        print('Second action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        action = np.deg2rad(0)
-        print('Third action', np.rad2deg(env.denormalize_action(action)))
+        action = env.do_normalize_action(np.deg2rad(0))
+        print('Third action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step upd
         print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
-        action = np.deg2rad(0)
-        print('Fourth action', np.rad2deg(env.denormalize_action(action)))
+        action = env.do_normalize_action(np.deg2rad(0))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
 

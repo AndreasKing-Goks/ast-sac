@@ -444,8 +444,12 @@ def obs_ship_IW_sampling_failure_reward(current_acc_reward, is_sampling_failure,
     
     # Compute terminal reward
     if is_sampling_failure:
+        # When current_acc_reward is positive, we HALV THE ACCUMULATED REWARD IN WHOLE EPISODE, 
+        # then deducted it (which already has positive value) from the total accumulated reward
         if current_acc_reward >= 0:
-            reward = reward * termination_multiplier
+            reward = -(reward * termination_multiplier)
+        # When current_acc_reward is positive, we HALV THE ACCUMULATED REWARD IN WHOLE EPISODE, 
+        # then add it (which already has negative value) from the total accumulated reward
         elif current_acc_reward < 0:
             reward = reward / termination_multiplier
         termination = True

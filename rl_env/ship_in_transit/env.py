@@ -123,15 +123,15 @@ class MultiShipRLEnv(Env):
         # Set the intermediate waypoint sampler parameter
         self.init_get_intermediate_waypoints()
         
+        # Set up ast-sac results tracker
+        self.init_ast_sac_results_snapshot()
+        
         # Set up the waypoint sample and sampling time tracker
         self.waypoint_samples = []
         self.waypoint_sampling_times = []
         
         # Set up the Reward Tracker
         self.reward_tracker = RewardTracker()
-        
-        # Set up ast-sac results tracker
-        self.init_ast_sac_results_snapshot()
         
         ## CONTAINERS FOR ANIMATION
         self.is_collision_imminent_list = []
@@ -171,7 +171,6 @@ class MultiShipRLEnv(Env):
             Useful for step() return values when is_sampling_failure() is True.
         '''
         self.next_observations = self.initial_states
-        self.accumulated_rewards = 0
         self.env_info = {
                         'events'            : [],
                         'terminal'          : False,
@@ -179,13 +178,13 @@ class MultiShipRLEnv(Env):
                         'obs_ship_stop'     : False,
                         }
     
-    def normalize_action(self, a_real):
+    def do_normalize_action(self, a_real):
         '''
         Map real action to normalized [-1,1] space
         '''
         return 2.0 * (a_real - self.action_space.low) / (self.action_space.high - self.action_space.low) - 1.0
     
-    def denormalize_action(self, a_norm):
+    def do_denormalize_action(self, a_norm):
         '''
         Map normalized [-1,1] to real action space
         '''
@@ -268,6 +267,9 @@ class MultiShipRLEnv(Env):
         
         # Reset the intermediate waypoint converter
         self.init_get_intermediate_waypoints()
+        
+        # Set up ast-sac results tracker
+        self.init_ast_sac_results_snapshot()
         
         # Set up the waypoint samples tracker
         self.waypoint_samples = []
@@ -632,12 +634,12 @@ class MultiShipRLEnv(Env):
         combined_done = False
         
         # Set up container
-        accumulated_reward = 0
+        accumulated_rewards = 0
         
         # If the action is not none and need the action is already normalized
         scoping_angle = action
         if self.normalize_action and action is not None:
-            scoping_angle = self.denormalize_action(scoping_angle)
+            scoping_angle = self.do_denormalize_action(scoping_angle)
         
         # If the action is not none and not normalized anymore
         # Initially set intermediate waypoints as None
@@ -667,9 +669,10 @@ class MultiShipRLEnv(Env):
                 
                 # Get the snapshots, update the env_info, and set combined_done as True
                 next_observations = self.next_observations
-                accumulated_reward, _ = obs_ship_IW_sampling_failure_reward(accumulated_reward, 
-                                                                            is_sampling_failure,
-                                                                            termination_multiplier=0.5)
+                accumulated_rewards, _ = obs_ship_IW_sampling_failure_reward(np.sum(self.reward_tracker.total), 
+                                                                             is_sampling_failure,
+                                                                             termination_multiplier=0.5)
+                
                 combined_done = True
                 env_info = self.env_info
                 env_info['events'].append('Learning agent samples false intermediate waypoints!')
@@ -678,18 +681,18 @@ class MultiShipRLEnv(Env):
                 env_info['obs_ship_stop'] = False
                 
                 # Update the reward tracker
-                self.reward_tracker.update_r_total_only(accumulated_reward)
+                self.reward_tracker.update_r_total_only(accumulated_rewards)
                 
-                return next_observations, accumulated_reward, combined_done, env_info
+                return next_observations, accumulated_rewards, combined_done, env_info
         
         # If reaching RoA, not done, and within simulation time limit do stepping with intermediate waypoints
         # If not, just step the simulator
         while (not is_reach_roa and not combined_done):
             # Step up the simulator
-            next_states, reward, combined_done, env_info = self._step()
+            next_states, rewards, combined_done, env_info = self._step()
             
-            # Accumulate the next reward for the AST-SAC
-            accumulated_reward += reward
+            # Accumulate the next reward for the AST-SAC and record it to class attribute
+            accumulated_rewards += rewards
             
             # Re-checking if the obstacle ship reach the radius of acceptance region
             north_position = self.obs.ship_model.north
@@ -711,9 +714,7 @@ class MultiShipRLEnv(Env):
                 next_observations = next_states
                 
                 # Record the ast-sac results snapshots
-                # Increment the accumulated rewards throughout the whole episodes
                 self.next_observations = next_observations
-                self.accumulated_rewards += accumulated_reward
                 self.env_info = env_info
                 
                 break
@@ -721,10 +722,10 @@ class MultiShipRLEnv(Env):
             # If finally reach radius of acceptance,
             if is_reach_roa and intermediate_waypoints:
                 # Step with intermediate_waypoints
-                next_states, reward, combined_done, env_info = self._step()
+                next_states, rewards, combined_done, env_info = self._step()
                 
-                # Then, accumulate the next reward for the AST-SAC
-                accumulated_reward += reward
+                # Accumulate the next reward for the AST-SAC and record it to class attribute
+                accumulated_rewards += rewards
                 
                 # Then, the next states become the next observations, the break the current looping
                 next_observations = next_states
@@ -732,28 +733,27 @@ class MultiShipRLEnv(Env):
                 # SPECIAL CASE
                 # The during the last line segment (sampling_count = max_sampling_count) after
                 # the last waypoint reache
-                if self.sampling_count >= self.args.sampling_frequency:
+                if self.sampling_count == self.args.sampling_frequency:
                     # Reset the travel time and travel distance tracker upon RoA visit. Start recounting again.
                     self.travel_dist = 0
                     self.travel_time = 0
                     
                     while not combined_done:
                          # Step up the simulator
-                        next_states, reward, combined_done, env_info = self._step()
+                        next_states, rewards, combined_done, env_info = self._step()
                         
-                        # Accumulate the next reward for the AST-SAC
-                        accumulated_reward += reward
+                        # Accumulate the next reward for the AST-SAC and record it to class attribute
+                        accumulated_rewards += rewards
 
                         # Then, the next states become the next observations, the break the current looping
                         next_observations = next_states
-                    
-                    # Record the ast-sac results snapshots
-                    self.next_observations = next_observations
-                    self.accumulated_rewards = accumulated_reward
-                    self.env_info = env_info
+                        
+                # Record the ast-sac results snapshots
+                self.next_observations = next_observations
+                self.env_info = env_info
                 break
         
-        return next_observations, accumulated_reward, combined_done, env_info
+        return next_observations, accumulated_rewards, combined_done, env_info
     
     def seed(self, seed=None):
         """Set the random seed for reproducibility"""
