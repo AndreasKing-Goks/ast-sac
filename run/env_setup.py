@@ -3,12 +3,10 @@ from rl_env.ship_in_transit.env import MultiShipRLEnv, ShipAssets
 from rl_env.ship_in_transit.sub_systems.ship_model import  ShipConfiguration, EnvironmentConfiguration, SimulationConfiguration, ShipModelAST
 from rl_env.ship_in_transit.sub_systems.ship_engine import MachinerySystemConfiguration, MachineryMode, MachineryModeParams, MachineryModes, SpecificFuelConsumptionBaudouin6M26Dot3, SpecificFuelConsumptionWartila6L26
 from rl_env.ship_in_transit.sub_systems.LOS_guidance import LosParameters
-from rl_env.ship_in_transit.sub_systems.obstacle import StaticObstacle, PolygonObstacle
+from rl_env.ship_in_transit.sub_systems.obstacle import PolygonObstacle
 from rl_env.ship_in_transit.sub_systems.controllers import ThrottleControllerGains, HeadingControllerGains, EngineThrottleFromSpeedSetPoint, HeadingBySampledRouteController
-from rl_env.ship_in_transit.utils.print_termination import print_termination
 
 ## IMPORT UTILS
-from utils.animate import ShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 
 ## IMPORT TOOLS
