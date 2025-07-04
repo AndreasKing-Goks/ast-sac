@@ -56,17 +56,8 @@ class NormalizedBoxEnv(ProxyEnv):
             next_obs = self._apply_normalize_obs(next_obs)
         return next_obs, reward * self._reward_scale, done, info
     
-    def reset(self, 
-              action=None):
-        # Denormalized action if action is not None
-        scaled_action = action
-        if action:
-            lb = self._wrapped_env.action_space.low
-            ub = self._wrapped_env.action_space.high
-            scaled_action = lb + (action + 1.) * 0.5 * (ub - lb)
-            scaled_action = np.clip(scaled_action, lb, ub)
-        
-        observations = self._wrapped_env.reset(scaled_action)
+    def reset(self):
+        observations = self._wrapped_env.reset()
         return observations
         
 

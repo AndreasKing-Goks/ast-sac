@@ -1,5 +1,4 @@
-## IMPORT ARGUMENT AND ENV PREP SCRIPT
-from run.env_args import get_env_args
+## IMPORT ENV PREP SCRIPT
 from run.env_setup import prepare_multiship_rl_env
 
 ## IMPORT FUNCTIONS
@@ -20,10 +19,10 @@ import argparse
 
 
 def parse_cli_args():
-    # Argument Parser
+    ## Argument Parser
     parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Args')
 
-    # Add arguments for environments
+    ## Add arguments for environments
     parser.add_argument('--max_sampling_frequency', type=int, default=7, metavar='N_SAMPLE',
                         help='ENV: maximum amount of action sampling per episode (default: 7)')
     parser.add_argument('--time_step', type=int, default=2, metavar='TIMESTEP',
@@ -41,7 +40,7 @@ def parse_cli_args():
     parser.add_argument('--normalize_action', type=bool, default=False, metavar='NORM_ACT',
                         help='ENV: normalize environment action space (default: False)')
     
-    # Add arguments for soft actor-critic algorithm
+    ## Add arguments for soft actor-critic algorithm
     parser.add_argument('--do_logging', type=bool, default=False, metavar='DO_LOG',
                         help='SAC_A: Activate training logging (default: True)')
     parser.add_argument('--algorithm', type=str, default='SAC', metavar='RL_ALG',
@@ -52,23 +51,30 @@ def parse_cli_args():
                         help='SAC_A: hidden layer size for all neural networks (default: 256)')
     parser.add_argument('--replay_buffer_size', type=int, default=int(1E6), metavar='BUFFER_SIZE',
                         help='SAC_A: replay buffer size (default: 1E6)')
+    parser.add_argument('--batch_size', type=int, default=256, metavar='BATCH_SIZE',
+                        help='SAC_A: data batch size for training (default: 256)')
+    # EPOCHS/TRAINS/STEPS COUNT
+    # step  : a single interaction with the environment
+    #           - collection of (s, a, r, s'. done)
+    # train : a single gradient update on the policy/networks
+    #           - training step to get transition from replay buffer, compute losses, then backpropagate
+    #           - a single batch size use is counted as a single training step
+    # epoch  : a full training cycle of learning + evaluation + logging
     parser.add_argument('--num_epochs', type=int, default=3000, metavar='N_EPOCHS',
                         help='SAC_A: number of full training iterations (default: 3000)')
     parser.add_argument('--num_eval_steps_per_epoch', type=int, default=5000, metavar='N_EVAL_STEPS',
-                        help='SAC_A: number of evaluation steps at the end of each epoch (default: 5000)')
+                        help='SAC_A: number of evaluation steps at the end of each epoch (default: 5000)') ## NEED TO CHECK
     parser.add_argument('--num_trains_per_train_loop', type=int, default=1000, metavar='N_TRAINS',
                         help='SAC_A: number of gradient updates to run per training loop (default: 1000)')
     parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=1000, metavar='N_EXPL_STEPS',
-                        help='SAC_A: number of exploration steps during training (default: 1000)')
+                        help='SAC_A: number of exploration steps during training (default: 1000)')  ## NEED TO CHECK
     parser.add_argument('--min_num_steps_before_training', type=int, default=1000, metavar='MIN_N_STEPS',
                         help='SAC_A: delayed start — buffer pre-filled with random actions \
-                              to stabilize early learning (default: 1000)')
-    parser.add_argument('--max_path_length', type=int, default=1000, metavar='MAX_PATH_LEN',
-                        help='SAC_A: maximum number of steps per episode before termination (default: 1000)')
-    parser.add_argument('--batch_size', type=int, default=256, metavar='BATCH_SIZE',
-                        help='SAC_A: data batch size for training (default: 256)')
+                                     to stabilize early learning (default: 1000)') # NEED TO CHECK
+    parser.add_argument('--max_path_length', type=int, default=7, metavar='MAX_PATH_LEN',
+                        help='SAC_A: maximum number of steps per episode before termination (default: 7)') # NEED TO CHECK
     
-    # Add arguments for soft actor-critic trainer
+    ## Add arguments for soft actor-critic trainer
     parser.add_argument('--discount', type=float, default=0.99, metavar='DISCOUNT_FACTOR',
                         help='SAC_T: discount factor for future rewards (default: 0.99)')
     parser.add_argument('--soft_target_tau', type=float, default=5E-3, metavar='SAC_TEMP',
@@ -84,6 +90,7 @@ def parse_cli_args():
     parser.add_argument('--use_automatic_entropy_tuning', type=bool, default=True, metavar='AUTO_ENTROPY',
                         help='SAC_T: adaptive entropy coefficient tuning if True (default: True)')
     
+    ## Parse args
     args = parser.parse_args()
     
     return args
@@ -143,11 +150,13 @@ def experiment(variant, args):
     eval_path_collector = MdpPathCollector(
         eval_env,
         eval_policy,
+        rollout_fn=ast_sac_rollout
     )
     # For exploration
     expl_path_collector = MdpPathCollector(
         expl_env,
         policy,
+        rollout_fn=ast_sac_rollout
     )
     
     ## Prepare the replay buffer

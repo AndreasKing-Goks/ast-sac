@@ -216,7 +216,7 @@ def prepare_multiship_rl_env(args):
         max_rudder_angle=machinery_config.max_rudder_angle_degrees * np.pi/180,
         num_of_samplings=2
     )
-    obs_desired_forward_speed = 4.0 # 5.5 immediate near collision.
+    obs_desired_forward_speed = 4.0
 
     obs_integrator_term = []
     obs_times = []
@@ -247,22 +247,10 @@ def prepare_multiship_rl_env(args):
     # Package the assets for reinforcement learning agent
     assets: List[ShipAssets] = [test, obs]
 
-    # Timer for drawing the ship
-    ship_draw = True
-    time_since_last_ship_drawing = 30
-
     ################################### ENV SPACE ###################################
-    # Set Collav Mode
-    collav_mode = None
-    collav_mode = 'simple'
-    collav_mode = 'sbmpc'
-
     # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
     env = MultiShipRLEnv(assets=assets,
                          map=map,
-                         ship_draw=ship_draw,
-                         collav=collav_mode,
-                         time_since_last_ship_drawing=time_since_last_ship_drawing,
                          args=args)
     
     return env, assets
