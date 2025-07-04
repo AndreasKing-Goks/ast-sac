@@ -42,7 +42,6 @@ class MdpPathCollector(PathCollector):
         paths = []
         num_steps_collected = 0
         while num_steps_collected < num_steps:
-            print(num_steps_collected)
             max_path_length_this_loop = min(  # Do not go over num_steps
                 max_path_length,
                 num_steps - num_steps_collected,

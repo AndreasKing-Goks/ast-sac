@@ -55,6 +55,15 @@ class MultiShipRLEnv(Env):
                  assets:List[ShipAssets],
                  map: PolygonObstacle,
                  args):
+        '''
+        Arguments:
+        - assets    : List of all ship assets. 
+                      First entry is always the ship under test
+                      Second entry is/are the obstacle ship(s)
+        - map       : Object map contains the location of land terrain
+                      and its helper functions based on Shapely library
+        - args      : Environmental arguments
+        '''
         super().__init__()
         
         # Store args as attribute

@@ -321,7 +321,7 @@ variant = dict(
 log = False
 # log = True
 if log:
-    setup_logger('ast-sac_logs', variant=variant)
+    setup_logger('sanity_checks', variant=variant)
 ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
 M = variant['layer_size']
 
