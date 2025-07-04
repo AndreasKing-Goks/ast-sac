@@ -259,10 +259,10 @@ def prepare_multiship_rl_env(args):
 
     # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
     env = MultiShipRLEnv(assets=assets,
-                        map=map,
-                        ship_draw=ship_draw,
-                        collav=collav_mode,
-                        time_since_last_ship_drawing=time_since_last_ship_drawing,
-                        args=args)
+                         map=map,
+                         ship_draw=ship_draw,
+                         collav=collav_mode,
+                         time_since_last_ship_drawing=time_since_last_ship_drawing,
+                         args=args)
     
     return env, assets

@@ -54,18 +54,14 @@ class MultiShipRLEnv(Env):
     def __init__(self, 
                  assets:List[ShipAssets],
                  map: PolygonObstacle,
-                 ship_draw:bool,
-                 collav:str,
-                 time_since_last_ship_drawing:float,
-                 args,
-                 normalize_action=False):
+                 args):
         super().__init__()
         
         # Store args as attribute
         self.args = args
         
         # Set collision avoidance handle
-        self.collav = collav
+        self.collav = args.collav_mode
         
         ## Unpack assets [test, obs]
         self.assets = assets
@@ -85,9 +81,7 @@ class MultiShipRLEnv(Env):
                              10000, 20000, np.pi, 3000, 10], dtype=np.float32),
             dtype=np.float32)
         
-        self.normalize_action = normalize_action
-        
-        if self.normalize_action:
+        if args.normalize_action:
             # Normalized scoping angle between -1 and 1
             self.action_space = Box(
                 low = np.array([-1.0], dtype=np.float32),
@@ -113,8 +107,8 @@ class MultiShipRLEnv(Env):
         self.map = map 
         
         # Ship drawing configuration
-        self.ship_draw = ship_draw
-        self.time_since_last_ship_drawing = time_since_last_ship_drawing
+        self.ship_draw = args.ship_draw
+        self.time_since_last_ship_drawing = args.time_since_last_ship_drawing
 
         # Scenario-Based Model Predictive Controller
         self.sbmpc = SBMPC(tf=1000, dt=20)
@@ -143,9 +137,9 @@ class MultiShipRLEnv(Env):
         AB_distance_e = self.obs.auto_pilot.navigate.east[-1] - self.obs.auto_pilot.navigate.east[0]
         
         self.AB_length = np.sqrt(AB_distance_n ** 2 + AB_distance_e ** 2)
-        self.AB_segment_length       = self.AB_length / (self.args.sampling_frequency + 1)
-        self.AB_north_segment_length = AB_distance_n / (self.args.sampling_frequency + 1)
-        self.AB_east_segment_length  = AB_distance_e / (self.args.sampling_frequency + 1) 
+        self.AB_segment_length       = self.AB_length / (self.args.max_sampling_frequency + 1)
+        self.AB_north_segment_length = AB_distance_n / (self.args.max_sampling_frequency + 1)
+        self.AB_east_segment_length  = AB_distance_e / (self.args.max_sampling_frequency + 1) 
         
         AB_alpha = np.arctan2(AB_distance_e, AB_distance_n)
         AB_beta = np.pi/2 - AB_alpha 
@@ -638,7 +632,7 @@ class MultiShipRLEnv(Env):
         
         # If the action is not none and need the action is already normalized
         scoping_angle = action
-        if self.normalize_action and action is not None:
+        if self.args.normalize_action and action is not None:
             scoping_angle = self.do_denormalize_action(scoping_angle)
         
         # If the action is not none and not normalized anymore
@@ -651,7 +645,7 @@ class MultiShipRLEnv(Env):
         is_sampling_failure = False
         
         # If allowed to sample
-        if self.sampling_count < self.args.sampling_frequency:
+        if self.sampling_count < self.args.max_sampling_frequency:
             # Set the obstacle ship to use the action and get the intermediate waypoints
             intermediate_waypoints = self.obs_ship_uses_scoping_angle(scoping_angle)
             
@@ -733,7 +727,7 @@ class MultiShipRLEnv(Env):
                 # SPECIAL CASE
                 # The during the last line segment (sampling_count = max_sampling_count) after
                 # the last waypoint reache
-                if self.sampling_count == self.args.sampling_frequency:
+                if self.sampling_count == self.args.max_sampling_frequency:
                     # Reset the travel time and travel distance tracker upon RoA visit. Start recounting again.
                     self.travel_dist = 0
                     self.travel_time = 0

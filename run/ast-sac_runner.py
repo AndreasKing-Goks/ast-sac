@@ -1,5 +1,5 @@
 ## IMPORT ARGUMENT AND ENV PREP SCRIPT
-from run.sim_args import get_sim_args
+from run.env_args import get_env_args
 from run.env_setup import prepare_multiship_rl_env
 
 ## IMPORT FUNCTIONS
@@ -16,7 +16,7 @@ from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
 
 def experiment(variant):
     # Get args and prepare RL_env
-    args = get_sim_args()
+    args = get_env_args()
     
     # Prepare RL_Env, use normalized env.
     multi_ship_rl_env, _ = prepare_multiship_rl_env(args)
