@@ -15,7 +15,7 @@ class MdpPathCollector(PathCollector):
             max_num_epoch_paths_saved=None,
             render=False,
             render_kwargs=None,
-            rollout_fn=ast_sac_rollout, #rollout,
+            rollout_fn=rollout, 
             save_env_in_snapshot=True,
     ):
         if render_kwargs is None:
@@ -42,6 +42,7 @@ class MdpPathCollector(PathCollector):
         paths = []
         num_steps_collected = 0
         while num_steps_collected < num_steps:
+            print(num_steps_collected)
             max_path_length_this_loop = min(  # Do not go over num_steps
                 max_path_length,
                 num_steps - num_steps_collected,
@@ -54,10 +55,17 @@ class MdpPathCollector(PathCollector):
                 render_kwargs=self._render_kwargs,
             )
             path_len = len(path['actions'])
+            
+            break_cond_1 = (path_len != max_path_length)
+            break_cond_2 = not path['dones'][-1]
+            break_cond_3 = discard_incomplete_paths
+            
+            # print(break_cond_1, break_cond_2, break_cond_3)
+            
             if (
-                    path_len != max_path_length
-                    and not path['dones'][-1]
-                    and discard_incomplete_paths
+                    break_cond_1
+                    and break_cond_2
+                    and break_cond_3
             ):
                 break
             num_steps_collected += path_len

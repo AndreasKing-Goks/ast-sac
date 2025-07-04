@@ -23,6 +23,7 @@ from ast_sac.torch.sac.sac import SACTrainer
 from ast_sac.torch.networks.mlp import ConcatMlp
 from ast_sac.torch.core.torch_rl_algorithm import TorchBatchRLAlgorithm
 from ast_sac.env_wrapper.normalized_box_env import NormalizedBoxEnv
+from ast_sac.samplers.data_collector.rollout_functions import rollout, ast_sac_rollout
 from utils.animate import ShipTrajectoryAnimator, RLShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 from utils.center_plot import center_plot_window
@@ -406,10 +407,12 @@ eval_policy = MakeDeterministic(policy)
 eval_path_collector = MdpPathCollector(
         eval_env,
         eval_policy,
+        rollout_fn=ast_sac_rollout
     )
 expl_path_collector = MdpPathCollector(
         expl_env,
         policy,
+        rollout_fn=ast_sac_rollout
     )
 replay_buffer = EnvReplayBuffer(
         variant['replay_buffer_size'],
@@ -644,7 +647,7 @@ if test6:
 # Test manual step() function with action sampled by a policy
 # Also check the reward functions
 test7 = True
-# test7 = False
+test7 = False
 
 if test7:
     
@@ -1017,13 +1020,16 @@ if test7:
 
 # Test ast_sac_rollout function() in MDPPathCollector.collect_new_paths
 test8 = True 
-test8 = False
+# test8 = False
 
 if test8:
-    max_path_length = 1000
-    num_expl_steps_per_train_loop=1000
+    max_path_length = 100
+    num_expl_steps_per_train_loop=100
     discard_incomplete_paths = False
+    policy.to(ptu.device)   
     paths = expl_path_collector.collect_new_paths(max_path_length=max_path_length,
-                                                num_steps=num_expl_steps_per_train_loop,
-                                                discard_incomplete_paths=discard_incomplete_paths)
+                                                  num_steps=num_expl_steps_per_train_loop,
+                                                  discard_incomplete_paths=discard_incomplete_paths)
     print('-------------------------------------------------')
+    print('Length:', len(paths))
+    # print('Paths :', paths)

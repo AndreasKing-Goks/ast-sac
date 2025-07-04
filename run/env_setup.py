@@ -116,14 +116,14 @@ def prepare_multiship_rl_env(args):
         initial_sideways_speed_m_per_s=0,
         initial_yaw_rate_rad_per_s=0,
         integration_step=args.time_step,
-        simulation_time=None,
+        simulation_time=10000,
     )
     test_initial_propeller_shaft_speed = 420
     test_ship = ShipModelAST(ship_config=ship_config,
-                            machinery_config=machinery_config,
-                            environment_config=env_config,
-                            simulation_config=ship_in_test_simu_setup,
-                            initial_propeller_shaft_speed_rad_per_s=test_initial_propeller_shaft_speed * np.pi / 30)
+                        machinery_config=machinery_config,
+                        environment_config=env_config,
+                        simulation_config=ship_in_test_simu_setup,
+                        initial_propeller_shaft_speed_rad_per_s=test_initial_propeller_shaft_speed * np.pi / 30)
 
     # Obstacle Ship
     ship_as_obstacle_simu_setup = SimulationConfiguration(
@@ -134,20 +134,23 @@ def prepare_multiship_rl_env(args):
         initial_sideways_speed_m_per_s=0,
         initial_yaw_rate_rad_per_s=0,
         integration_step=args.time_step,
-        simulation_time=None,
+        simulation_time=10000,
     )
     obs_initial_propeller_shaft_speed = 200
     obs_ship = ShipModelAST(ship_config=ship_config,
-                            machinery_config=machinery_config,
-                            environment_config=env_config,
-                            simulation_config=ship_as_obstacle_simu_setup,
-                            initial_propeller_shaft_speed_rad_per_s=obs_initial_propeller_shaft_speed * np.pi / 30)
+                        machinery_config=machinery_config,
+                        environment_config=env_config,
+                        simulation_config=ship_as_obstacle_simu_setup,
+                        initial_propeller_shaft_speed_rad_per_s=obs_initial_propeller_shaft_speed * np.pi / 30)
 
     ## Configure the map data
     map_data = [
         [(0,10000), (10000,10000), (9200,9000) , (7600,8500), (6700,7300), (4900,6500), (4300, 5400), (4700, 4500), (6000,4000), (5800,3600), (4200, 3200), (3200,4100), (2000,4500), (1000,4000), (900,3500), (500,2600), (0,2350)],   # Island 1 
         [(10000, 0), (11500,750), (12000, 2000), (11700, 3000), (11000, 3600), (11250, 4250), (12300, 4000), (13000, 3800), (14000, 3000), (14500, 2300), (15000, 1700), (16000, 800), (17500,0)], # Island 2
-        [(15500, 10000), (16000, 9000), (18000, 8000), (19000, 7500), (20000, 6000), (20000, 10000)]
+        [(15500, 10000), (16000, 9000), (18000, 8000), (19000, 7500), (20000, 6000), (20000, 10000)],
+        [(5500, 5300), (6000,5000), (6800, 4500), (8000, 5000), (8700, 5500), (9200, 6700), (8000, 7000), (6700, 6300), (6000, 6000)],
+        [(15000, 5000), (14000, 5500), (12500, 5000), (14000, 4100), (16000, 2000), (15700, 3700)],
+        [(11000, 2000), (10300, 3200), (9000, 1500), (10000, 1000)]
         ]
 
     map = PolygonObstacle(map_data)
@@ -247,15 +250,19 @@ def prepare_multiship_rl_env(args):
     # Timer for drawing the ship
     ship_draw = True
     time_since_last_ship_drawing = 30
-    
-    collav_mode = args.collav_mode
-    
+
+    ################################### ENV SPACE ###################################
+    # Set Collav Mode
+    collav_mode = None
+    collav_mode = 'simple'
+    collav_mode = 'sbmpc'
+
     # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
     env = MultiShipRLEnv(assets=assets,
-                       map=map,
-                       ship_draw=ship_draw,
-                       collav=collav_mode,
-                       time_since_last_ship_drawing=time_since_last_ship_drawing,
-                       args=args)
+                        map=map,
+                        ship_draw=ship_draw,
+                        collav=collav_mode,
+                        time_since_last_ship_drawing=time_since_last_ship_drawing,
+                        args=args)
     
     return env, assets
