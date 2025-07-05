@@ -15,7 +15,7 @@ import gtimer as gt
 
 SACLosses = namedtuple(
     'SACLosses',
-    'policy_loss qf1_loss qf2_loss alpja loss'
+    ['policy_loss', 'qf1_loss', 'qf2_loss', 'alpha_loss']
 )
 
 class SACTrainer(TorchTrainer, LossFunction):
