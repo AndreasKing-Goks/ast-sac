@@ -6,7 +6,7 @@ from utils.center_plot import center_plot_window
 from utils.animate import RLShipTrajectoryAnimator
 import os
 
-class RunPostTrainedEnv():
+class ShowPostTrainedEnvResult():
     def __init__(self, env):
         '''
         Takes post-trained wrapped environment, then plot and animate the results

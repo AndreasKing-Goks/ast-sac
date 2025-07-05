@@ -29,7 +29,7 @@ from utils.paths_utils import get_data_path
 from utils.center_plot import center_plot_window
 
 from run.path_reader import ActionPathReader
-from run.run_post_train_env import RunPostTrainedEnv
+from run.show_post_train_env_result import ShowPostTrainedEnvResult
 
 ### IMPORT TOOLS
 import argparse
@@ -40,12 +40,13 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import os
 import torch
+import time
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 # Argument Parser
 parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Args')
 
-parser.add_argument('--max_sampling_frequency', type=int, default=7, metavar='N_SAMPLE',
+parser.add_argument('--max_sampling_frequency', type=int, default=9, metavar='N_SAMPLE',
                     help='maximum amount of action sampling per episode (default: 7)')
 parser.add_argument('--time_step', type=int, default=2, metavar='TIMESTEP',
                     help='time step size in second for ship transit simulator (default: 2)')
@@ -369,15 +370,15 @@ replay_buffer = EnvReplayBuffer(
         variant['replay_buffer_size'],
         expl_env,
     )
-# trainer = SACTrainer(
-#         env=eval_env,
-#         policy=policy,
-#         qf1=qf1,
-#         qf2=qf2,
-#         target_qf1=target_qf1,
-#         target_qf2=target_qf2,
-#         **variant['trainer_kwargs']
-#     )
+trainer = SACTrainer(
+        env=eval_env,
+        policy=policy,
+        qf1=qf1,
+        qf2=qf2,
+        target_qf1=target_qf1,
+        target_qf2=target_qf2,
+        **variant['trainer_kwargs']
+    )
 # algorithm = TorchBatchRLAlgorithm(
 #         trainer=trainer,
 #         exploration_env=expl_env,
@@ -1391,11 +1392,15 @@ test9=True
 # test9=False
 
 if test9:
+    start_time = time.time()
     policy.to(ptu.device)   
     # Get path using the function
     path = ast_sac_rollout(expl_env,
                            policy,
                            max_path_length=args.max_sampling_frequency)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print('Elasped time:', elapsed_time, 'seconds')
     
     for i in range(len(path['actions'])):
         print('STEP', i+1)
@@ -1408,12 +1413,15 @@ if test9:
         print('------------------')
         
     # Do plot and animate from the post trained environment
-    post_trained = RunPostTrainedEnv(expl_env)
-    post_trained.do_plot_and_animate(plot_1=True,
-                                     plot_2=True,
-                                     plot_3=True,
-                                     plot_4=True,
-                                     animation=True)
+    post_trained = ShowPostTrainedEnvResult(expl_env)
+    post_trained.do_plot_and_animate(
+                                    #  plot_1=True,
+                                    #  plot_2=True,
+                                    #  plot_3=True,
+                                    #  plot_4=True,
+                                     animation=True
+                                     )
+    
     
     print('#######################################################################')
     print('#######################################################################')
@@ -1435,7 +1443,7 @@ if test9:
         print('------------------')
     
     # Do plot and animate from the post trained environment
-    post_trained = RunPostTrainedEnv(expl_env)
+    post_trained = ShowPostTrainedEnvResult(expl_env)
     post_trained.do_plot_and_animate(plot_1=True,
                                      plot_2=True,
                                      plot_3=True,
@@ -1848,4 +1856,3 @@ if test12:
     # #                            plot_3=True,
     # #                            plot_4=True) 
     # action_path_reader.animate(animation=True)
-    
