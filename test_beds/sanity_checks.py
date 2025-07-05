@@ -82,7 +82,7 @@ parser.add_argument('--normalize_action', type=bool, default=False, metavar='NOR
                     help='ENV: normalize environment action space (default: False)')
 
 ## Add arguments for soft actor-critic algorithm
-parser.add_argument('--do_logging', type=bool, default=True, metavar='DO_LOG',
+parser.add_argument('--do_logging', type=bool, default=False, metavar='DO_LOG',
                     help='SAC_A: Activate training logging (default: True)')
 parser.add_argument('--algorithm', type=str, default='SAC', metavar='RL_ALG',
                     help='SAC_A: RL algorithm type for AST (default: "SAC")')
@@ -392,7 +392,7 @@ variant = dict(
     ),
 )
 log = False
-log = True
+# log = True
 if log:
     setup_logger('sanity_checks', variant=variant)
 ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
@@ -458,7 +458,7 @@ algorithm = TorchBatchRLAlgorithm(
         **variant['algorithm_kwargs']
     )
 algorithm.to(ptu.device)
-algorithm.train()
+# algorithm.train()
 
 print('-------------------------------------------------')
 
@@ -1458,7 +1458,7 @@ if test8:
 
 # Test ast_sac_rollout() alone
 test9=True
-test9=False
+# test9=False
 
 if test9:
     start_time = time.time()

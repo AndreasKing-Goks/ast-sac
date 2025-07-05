@@ -66,6 +66,10 @@ def contextual_rollout(
     )
     return paths
 
+def stringify_events(env_info):
+    if isinstance(env_info.get('events'), list):
+        env_info['events'] = '; '.join(env_info['events']) if env_info['events'] else 'None'
+    return env_info
 
 def ast_sac_rollout(
         env,
@@ -124,6 +128,9 @@ def ast_sac_rollout(
         # Step the environment
         next_o, r, done, env_info = env.step(copy.deepcopy(a))
 
+        # Stringify env_info
+        env_info = stringify_events(env_info)
+        
         # NOT USED (Render after action)
         if render:
             env.render(**render_kwargs)
