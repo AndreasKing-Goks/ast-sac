@@ -178,7 +178,7 @@ def get_reward_and_env_info(env_args,
     
     # Get env_info
     env_info = {
-        'events'            : [],
+        'events'            : '',
         'terminal'          : False,
         'test_ship_stop'    : False,
         'obs_ship_stop'     : False,
@@ -190,64 +190,64 @@ def get_reward_and_env_info(env_args,
     obs_ship_stop_flags = []
 
     # Initialize event list
-    events = []
+    events = ''
 
     if termination_1:
-        events.append('Ships collision!')
+        events += 'Ships collision!'
         terminal_flags.append(True)
         test_ship_stop_flags.append(True)
         obs_ship_stop_flags.append(True)
 
     if termination_2:
-        events.append('Ship under test experiences grounding!')
+        events += '|Ship under test experiences grounding!|'
         terminal_flags.append(True)
         test_ship_stop_flags.append(True)
         obs_ship_stop_flags.append(False)
 
     if termination_3:
-        events.append('Ship under test suffers navigational failure!')
+        events += '|Ship under test suffers navigational failure!|'
         terminal_flags.append(True)
         test_ship_stop_flags.append(True)
         obs_ship_stop_flags.append(False)
 
     if termination_4:
-        events.append('Obstacle ship experiences grounding!')
+        events += '|Obstacle ship experiences grounding!|'
         terminal_flags.append(True)
         test_ship_stop_flags.append(False)
         obs_ship_stop_flags.append(True)
 
     if termination_5:
-        events.append('Obstacle ship suffers navigational failure!')
+        events += '|Obstacle ship suffers navigational failure!|'
         terminal_flags.append(True)
         test_ship_stop_flags.append(False)
         obs_ship_stop_flags.append(True)
 
     if termination_6:
-        events.append('Ship under test reaches its final destination!')
+        events += '|Ship under test reaches its final destination!|'
         terminal_flags.append(False)
         test_ship_stop_flags.append(True)
         obs_ship_stop_flags.append(False)
 
     if termination_7:
-        events.append('Ship under test goes outside the map horizon!')
+        events += '|Ship under test goes outside the map horizon!|'
         terminal_flags.append(False)
         test_ship_stop_flags.append(True)
         obs_ship_stop_flags.append(False)
 
     if termination_8:
-        events.append('Obstacle ship reaches its final destination!')
+        events += '|Obstacle ship reaches its final destination!|'
         terminal_flags.append(False)
         test_ship_stop_flags.append(False)
         obs_ship_stop_flags.append(True)
 
     if termination_9:
-        events.append('Obstacle ship goes outside the map horizon!')
+        events += '|Obstacle ship goes outside the map horizon!|'
         terminal_flags.append(False)
         test_ship_stop_flags.append(False)
         obs_ship_stop_flags.append(True)
 
     if termination_10:
-        events.append('Simulation reaches its time limit')
+        events += '|Simulation reaches its time limit|'
         terminal_flags.append(False)
         test_ship_stop_flags.append(True)
         obs_ship_stop_flags.append(True)

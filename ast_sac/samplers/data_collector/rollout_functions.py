@@ -127,9 +127,6 @@ def ast_sac_rollout(
 
         # Step the environment
         next_o, r, done, env_info = env.step(copy.deepcopy(a))
-
-        # Stringify env_info
-        env_info = stringify_events(env_info)
         
         # NOT USED (Render after action)
         if render:

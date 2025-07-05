@@ -175,7 +175,7 @@ class MultiShipRLEnv(Env):
         '''
         self.next_observations = self.initial_states
         self.env_info = {
-                        'events'            : [],
+                        'events'            : '',
                         'terminal'          : False,
                         'test_ship_stop'    : False,
                         'obs_ship_stop'     : False,
@@ -678,7 +678,7 @@ class MultiShipRLEnv(Env):
                 
                 combined_done = True
                 env_info = self.env_info
-                env_info['events'].append('Learning agent samples false intermediate waypoints!')
+                env_info['events'] += '|Learning agent samples false intermediate waypoints!|'
                 env_info['terminal'] = True
                 env_info['test_ship_stop'] = False
                 env_info['obs_ship_stop'] = False
