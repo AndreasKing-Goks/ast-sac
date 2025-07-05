@@ -192,7 +192,7 @@ class ShipTrajectoryAnimator:
 
         plt.show()
     
-    def run(self, fps=None):
+    def run(self, fps=None, auto_show=False):
         """
         Run the animation in real time.
 
@@ -213,7 +213,8 @@ class ShipTrajectoryAnimator:
             repeat=False
         )
 
-    plt.show()
+        if auto_show:
+            plt.show()
 
         
     def save(self, video_path, fps=2):
@@ -485,6 +486,7 @@ class RLShipTrajectoryAnimator:
 
         Parameters:
         - fps: Optional. Frames per second for the live animation. If None, uses default interval.
+        
         """
         if fps is not None:
             self.interval = 1000 / fps  # override interval
@@ -499,8 +501,9 @@ class RLShipTrajectoryAnimator:
             interval=self.interval,
             repeat=False
         )
-
-    plt.show()
+        
+        # Show animation
+        plt.show()
 
         
     def save(self, video_path, fps=2):

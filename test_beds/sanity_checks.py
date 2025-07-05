@@ -28,6 +28,9 @@ from utils.animate import ShipTrajectoryAnimator, RLShipTrajectoryAnimator
 from utils.paths_utils import get_data_path
 from utils.center_plot import center_plot_window
 
+from run.path_reader import ActionPathReader
+from run.run_post_train_env import RunPostTrainedEnv
+
 ### IMPORT TOOLS
 import argparse
 from typing import List
@@ -42,11 +45,11 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 # Argument Parser
 parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Args')
 
-parser.add_argument('--max_sampling_frequency', type=int, default=4, metavar='N_SAMPLE',
+parser.add_argument('--max_sampling_frequency', type=int, default=7, metavar='N_SAMPLE',
                     help='maximum amount of action sampling per episode (default: 7)')
 parser.add_argument('--time_step', type=int, default=2, metavar='TIMESTEP',
                     help='time step size in second for ship transit simulator (default: 2)')
-parser.add_argument('--radius_of_acceptance', type=int, default=200, metavar='ROA',
+parser.add_argument('--radius_of_acceptance', type=int, default=250, metavar='ROA',
                     help='radius of acceptance for LOS algorithm (default: 200)')
 parser.add_argument('--lookahead_distance', type=int, default=1000, metavar='LD',
                     help='lookahead distance for LOS algorithm (default: 1000)')
@@ -966,11 +969,484 @@ if test7:
 
     print('-------------------------------------------------')
 
-# Test ast_sac_rollout function() in MDPPathCollector.collect_new_paths
-test8 = True 
-# test8 = False
+# Test step - reset -step again
+test8 = True
+test8 = False
 
 if test8:
+    # Manual scoping angle or random policy sampling
+    manual = True
+    manual = False
+    
+    print('Test and plot step up behaviour')
+    print('sampling count before reset:', expl_env.wrapped_env.sampling_count)
+    init_observations = expl_env.reset()                                                    # First reset
+    policy.to(ptu.device)                                                                   # Sent policy networks to device
+    
+    action, _ = policy.get_action(init_observations)                                        # Get an action
+    if manual:
+        action = env.do_normalize_action(np.deg2rad(0))
+    print('First action', np.rad2deg(env.do_denormalize_action(action)))
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Second action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Third action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step upd
+        print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:            
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
+        
+    ### THEN RESET
+        # Manual scoping angle or random policy sampling
+    # manual = True
+    # manual = False
+    
+    print('############################################################################')
+    print('DO RESET')
+    print('############################################################################')
+    
+    print('Test and plot step up behaviour')
+    print('sampling count before reset:', expl_env.wrapped_env.sampling_count)
+    init_observations = expl_env.reset()                                                    # First reset
+    policy.to(ptu.device)                                                                   # Sent policy networks to device
+    
+    action, _ = policy.get_action(init_observations)                                        # Get an action
+    if manual:
+        action = env.do_normalize_action(np.deg2rad(0))
+    print('First action', np.rad2deg(env.do_denormalize_action(action)))
+    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+    print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Second action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Third action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step upd
+        print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:            
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
+
+    # Get the simulation results for all assets
+    ts_results_df = pd.DataFrame().from_dict(expl_env.wrapped_env.test.ship_model.simulation_results)
+    os_results_df = pd.DataFrame().from_dict(expl_env.wrapped_env.obs.ship_model.simulation_results)
+
+    # Get the time when the sampling begin, failure modes and the waypoints
+    waypoint_sampling_times = expl_env.wrapped_env.waypoint_sampling_times
+    
+    # Print
+    print('')
+    print('---')
+    print('Waypoint sampling time record:', waypoint_sampling_times)
+    print('---')
+    print('after step route north:', expl_env.obs.auto_pilot.navigate.north)
+    print('after step route east :', expl_env.obs.auto_pilot.navigate.east)
+    print('---')
+    print(env_info['events'])
+
+    # Plot 1: Overall process plot
+    plot_1 = False
+    # plot_1 = True
+
+    # Plot 2: Status plot
+    plot_2 = False
+    # plot_2 = True
+    
+    # Plot 3: Reward plots
+    plot_3 = False
+    # plot_3 = True
+    
+    # Plot 4: Cumulative rewards plots
+    plot_4 = False
+    # plot_4 = True
+    
+    # For animation
+    animation = False
+    animation = True
+
+    if animation:
+        test_route = {'east': test.auto_pilot.navigate.east, 'north': test.auto_pilot.navigate.north}
+        obs_route = {'east': obs.auto_pilot.navigate.east, 'north': obs.auto_pilot.navigate.north}
+        waypoint_sampling_times = expl_env.wrapped_env.waypoint_sampling_times
+        waypoints = list(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north))
+        map_obj = map
+        radius_of_acceptance = args.radius_of_acceptance
+        timestamps = test.time_list
+        interval = args.time_step * 1000
+        test_drawer=test.ship_model.draw
+        obs_drawer=obs.ship_model.draw
+        test_headings=ts_results_df["yaw angle [deg]"]
+        obs_headings=os_results_df["yaw angle [deg]"]
+        is_collision_imminent_list = expl_env.wrapped_env.is_collision_imminent_list
+        is_collision_list = expl_env.wrapped_env.is_collision_list
+        
+        # Do animation
+        animator = RLShipTrajectoryAnimator(ts_results_df,
+                                            os_results_df,
+                                            test_route,
+                                            obs_route,
+                                            waypoint_sampling_times,
+                                            waypoints,
+                                            map_obj,
+                                            radius_of_acceptance,
+                                            timestamps,
+                                            interval,
+                                            test_drawer,
+                                            obs_drawer,
+                                            test_headings,
+                                            obs_headings,
+                                            is_collision_imminent_list,
+                                            is_collision_list)
+
+        ani_ID = 1
+        ani_dir = os.path.join('animation', 'comparisons')
+        filename  = "trajectory.mp4"
+        video_path = os.path.join(ani_dir, filename)
+        fps = 480
+        
+        # Create the output directory if it doesn't exist
+        os.makedirs(ani_dir, exist_ok=True)
+        
+        # animator.save(video_path, fps)
+        animator.run(fps)
+        
+    # Create a No.4 2x4 grid for accumulated reward subplots
+    if plot_4:
+        fig_4, axes = plt.subplots(nrows=2, ncols=4, figsize=(16, 6))
+        plt.figure(fig_4.number)
+        axes = axes.flatten()
+        
+        # Center plotting
+        center_plot_window()
+
+        titles = [
+            'Ship under test grounding rewards (cumulative)',
+            'Ship under test navigational failure rewards (cumulative)',
+            'Rewards from ship under test (cumulative)',
+            'Ship collision rewards (cumulative)',
+            'Obstacle ship grounding rewards (cumulative)',
+            'Obstacle ship navigational failure rewards (cumulative)',
+            'Rewards from obstacle ship (cumulative)',
+            'Total rewards obtained (cumulative)'
+        ]
+
+        reward_series = [
+            expl_env.wrapped_env.reward_tracker.test_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.test_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_test_ship,
+            expl_env.wrapped_env.reward_tracker.ship_collision,
+            expl_env.wrapped_env.reward_tracker.obs_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.obs_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_obs_ship,
+            expl_env.wrapped_env.reward_tracker.total,
+        ]
+
+        for i in range(8):
+            cumulative_reward = np.cumsum(reward_series[i])
+            axes[i].plot(cumulative_reward)
+            axes[i].set_title(titles[i], fontsize=10)
+            axes[i].set_xlabel('Time (s)', fontsize=8)
+            axes[i].set_ylabel('Cumulative Rewards', fontsize=8)
+            axes[i].tick_params(axis='both', labelsize=7)
+            axes[i].grid(color='0.8', linestyle='-', linewidth=0.3)
+            axes[i].set_xlim(left=0)
+
+        plt.tight_layout()
+        plt.subplots_adjust(wspace=0.3, hspace=0.4)
+
+    
+    # Create a No.3 2x4 grid for subplots
+    if plot_3:
+        fig_3, axes = plt.subplots(nrows=2, ncols=4, figsize=(16, 6))  # Slightly shorter height
+        plt.figure(fig_3.number)
+        axes = axes.flatten()
+
+        # Center plotting
+        center_plot_window()
+        
+        titles = [
+            'Ship under test grounding rewards',
+            'Ship under test navigational failure rewards',
+            'Rewards from ship under test',
+            'Ship collision rewards',
+            'Obstacle ship grounding rewards',
+            'Obstacle ship navigational failure rewards',
+            'Rewards from obstacle ship',
+            'Total rewards obtained'
+        ]
+
+        reward_series = [
+            expl_env.wrapped_env.reward_tracker.test_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.test_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_test_ship,
+            expl_env.wrapped_env.reward_tracker.ship_collision,
+            expl_env.wrapped_env.reward_tracker.obs_ship_grounding,
+            expl_env.wrapped_env.reward_tracker.obs_ship_nav_failure,
+            expl_env.wrapped_env.reward_tracker.from_obs_ship,
+            expl_env.wrapped_env.reward_tracker.total,
+        ]
+
+        for i in range(8):
+            axes[i].plot(reward_series[i])
+            axes[i].set_title(titles[i], fontsize=10)
+            axes[i].set_xlabel('Time (s)', fontsize=8)
+            axes[i].set_ylabel('Rewards', fontsize=8)
+            axes[i].tick_params(axis='both', labelsize=7)
+            axes[i].grid(color='0.8', linestyle='-', linewidth=0.3)
+            axes[i].set_xlim(left=0)
+
+        plt.tight_layout()
+        plt.subplots_adjust(wspace=0.3, hspace=0.4)  # Optional: fine-tune spacing
+
+    # Create a No.2 3x4 grid for subplots
+    if plot_2:
+        fig_2, axes = plt.subplots(nrows=3, ncols=4, figsize=(15, 10))
+        plt.figure(fig_2.number)  # Ensure it's the current figure
+        axes = axes.flatten()  # Flatten the 2D array for easier indexing
+    
+        # Center plotting
+        center_plot_window()
+
+        # Plot 2.1: Forward Speed
+        axes[0].plot(ts_results_df['time [s]'], ts_results_df['forward speed [m/s]'])
+        axes[0].axhline(y=test_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
+        axes[0].set_title('Test Ship Forward Speed [m/s]')
+        axes[0].set_xlabel('Time (s)')
+        axes[0].set_ylabel('Forward Speed (m/s)')
+        axes[0].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[0].set_xlim(left=0)
+
+        # Plot 3.1: Forward Speed
+        axes[1].plot(os_results_df['time [s]'], os_results_df['forward speed [m/s]'])
+        axes[1].axhline(y=obs_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
+        axes[1].set_title('Obstacle Ship Forward Speed [m/s]')
+        axes[1].set_xlabel('Time (s)')
+        axes[1].set_ylabel('Forward Speed (m/s)')
+        axes[1].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[1].set_xlim(left=0)
+
+        # Plot 2.2: Rudder Angle
+        axes[2].plot(ts_results_df['time [s]'], ts_results_df['rudder angle [deg]'])
+        axes[2].set_title('Test Ship Rudder angle [deg]')
+        axes[2].set_xlabel('Time (s)')
+        axes[2].set_ylabel('Rudder angle [deg]')
+        axes[2].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[2].set_xlim(left=0)
+        axes[2].set_ylim(-31,31)
+
+        # Plot 3.2: Rudder Angle
+        axes[3].plot(os_results_df['time [s]'], os_results_df['rudder angle [deg]'])
+        axes[3].set_title('Obstacle Ship Rudder angle [deg]')
+        axes[3].set_xlabel('Time (s)')
+        axes[3].set_ylabel('Rudder angle [deg]')
+        axes[3].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[3].set_xlim(left=0)
+        axes[3].set_ylim(-31,31)
+
+        # Plot 2.3: Cross Track error
+        axes[4].plot(ts_results_df['time [s]'], ts_results_df['cross track error [m]'])
+        axes[4].set_title('Test Ship Cross Track Error [m]')
+        axes[4].set_xlabel('Time (s)')
+        axes[4].set_ylabel('Cross track error (m)')
+        axes[4].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[4].set_xlim(left=0)
+
+        # Plot 3.3: Cross Track error
+        axes[5].plot(os_results_df['time [s]'], os_results_df['cross track error [m]'])
+        axes[5].set_title('Obstacle Ship Cross Track Error [m]')
+        axes[5].set_xlabel('Time (s)')
+        axes[5].set_ylabel('Cross track error (m)')
+        axes[5].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[5].set_xlim(left=0)
+
+        # Plot 2.4: Propeller Shaft Speed
+        axes[6].plot(ts_results_df['time [s]'], ts_results_df['propeller shaft speed [rpm]'])
+        axes[6].set_title('Test Ship Propeller Shaft Speed [rpm]')
+        axes[6].set_xlabel('Time (s)')
+        axes[6].set_ylabel('Propeller Shaft Speed (rpm)')
+        axes[6].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[6].set_xlim(left=0)
+
+        # Plot 3.4: Propeller Shaft Speed
+        axes[7].plot(os_results_df['time [s]'], os_results_df['propeller shaft speed [rpm]'])
+        axes[7].set_title('Obstacle Ship Propeller Shaft Speed [rpm]')
+        axes[7].set_xlabel('Time (s)')
+        axes[7].set_ylabel('Propeller Shaft Speed (rpm)')
+        axes[7].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[7].set_xlim(left=0)
+
+        # Plot 2.5: Power vs Available Power
+        axes[8].plot(ts_results_df['time [s]'], ts_results_df['power electrical [kw]'], label="Power")
+        axes[8].plot(ts_results_df['time [s]'], ts_results_df['available power electrical [kw]'], label="Available Power")
+        axes[8].set_title('Test Ship Power vs Available Power [kw]')
+        axes[8].set_xlabel('Time (s)')
+        axes[8].set_ylabel('Power (kw)')
+        axes[8].legend()
+        axes[8].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[8].set_xlim(left=0)
+
+        # Plot 3.5: Power vs Available Power
+        axes[9].plot(os_results_df['time [s]'], os_results_df['power electrical [kw]'], label="Power")
+        axes[9].plot(os_results_df['time [s]'], os_results_df['available power electrical [kw]'], label="Available Power")
+        axes[9].set_title('Obstacle Ship Power vs Available Power [kw]')
+        axes[9].set_xlabel('Time (s)')
+        axes[9].set_ylabel('Power (kw)')
+        axes[9].legend()
+        axes[9].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[9].set_xlim(left=0)
+
+        # Plot 2.6: Fuel Consumption
+        axes[10].plot(ts_results_df['time [s]'], ts_results_df['fuel consumption [kg]'])
+        axes[10].set_title('Test Ship Fuel Consumption [kg]')
+        axes[10].set_xlabel('Time (s)')
+        axes[10].set_ylabel('Fuel Consumption (kg)')
+        axes[10].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[10].set_xlim(left=0)
+
+        # Plot 3.6: Fuel Consumption
+        axes[11].plot(os_results_df['time [s]'], os_results_df['fuel consumption [kg]'])
+        axes[11].set_title('Obstacle Ship Fuel Consumption [kg]')
+        axes[11].set_xlabel('Time (s)')
+        axes[11].set_ylabel('Fuel Consumption (kg)')
+        axes[11].grid(color='0.8', linestyle='-', linewidth=0.5)
+        axes[11].set_xlim(left=0)
+
+        # Adjust layout for better spacing
+        plt.tight_layout()
+
+    if plot_1:    
+        plt.figure(figsize=(10, 5.5))
+
+        # Plot 1.1: Ship trajectory with sampled route
+        # Test ship
+        plt.plot(ts_results_df['east position [m]'].to_numpy(), ts_results_df['north position [m]'].to_numpy())
+        plt.scatter(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, marker='x', color='blue')  # Waypoints
+        plt.plot(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north, linestyle='--', color='blue')  # Line
+        for x, y in zip(test.ship_model.ship_drawings[1], test.ship_model.ship_drawings[0]):
+            plt.plot(x, y, color='blue')
+        # for i, (east, north) in enumerate(zip(test.auto_pilot.navigate.east, test.auto_pilot.navigate.north)):
+        #     test_radius_circle = Circle((east, north), args.radius_of_acceptance, color='blue', alpha=0.3, fill=True)
+        #     plt.gca().add_patch(test_radius_circle)
+        # Obs ship    
+        plt.plot(os_results_df['east position [m]'].to_numpy(), os_results_df['north position [m]'].to_numpy())
+        plt.scatter(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, marker='x', color='red')  # Waypoints
+        plt.plot(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north, linestyle='--', color='red')  # Line
+        for x, y in zip(obs.ship_model.ship_drawings[1], obs.ship_model.ship_drawings[0]):
+            plt.plot(x, y, color='red')
+        for i, (east, north) in enumerate(zip(obs.auto_pilot.navigate.east, obs.auto_pilot.navigate.north)):
+            obs_radius_circle = Circle((east, north), args.radius_of_acceptance, color='red', alpha=0.3, fill=True)
+            plt.gca().add_patch(obs_radius_circle)
+        map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+
+        plt.xlim(0, 20000)
+        plt.ylim(0, 10000)
+        plt.title('Ship Trajectory with the Sampled Route')
+        plt.xlabel('East position (m)')
+        plt.ylabel('North position (m)')
+        plt.gca().set_aspect('equal')
+        plt.grid(color='0.8', linestyle='-', linewidth=0.5)
+
+        # Adjust layout for better spacing
+        plt.tight_layout()
+    
+    # Show Plot
+    plt.show()
+
+    print('-------------------------------------------------')
+
+# Test ast_sac_rollout() alone
+test9=True
+# test9=False
+
+if test9:
+    policy.to(ptu.device)   
+    # Get path using the function
+    path = ast_sac_rollout(expl_env,
+                           policy,
+                           max_path_length=args.max_sampling_frequency)
+    
+    for i in range(len(path['actions'])):
+        print('STEP', i+1)
+        print('Observation      :', path['observations'][i])
+        print('Action           :', path['actions'][i])
+        print('Next observation :', path['next_observations'][i])
+        print('Terminal         :', path['terminals'][i])
+        print('Done             :', path['dones'][i])
+        print('Env infos        :', path['env_infos'][i])
+        print('------------------')
+        
+    # Do plot and animate from the post trained environment
+    post_trained = RunPostTrainedEnv(expl_env)
+    post_trained.do_plot_and_animate(plot_1=True,
+                                     plot_2=True,
+                                     plot_3=True,
+                                     plot_4=True,
+                                     animation=True)
+    
+    print('#######################################################################')
+    print('#######################################################################')
+    print('#######################################################################')
+    
+    # Get path using the function
+    path = ast_sac_rollout(expl_env,
+                           policy,
+                           max_path_length=args.max_sampling_frequency)
+    
+    for i in range(len(path['actions'])):
+        print('STEP', i+1)
+        print('Observation      :', path['observations'][i])
+        print('Action           :', path['actions'][i])
+        print('Next observation :', path['next_observations'][i])
+        print('Terminal         :', path['terminals'][i])
+        print('Done             :', path['dones'][i])
+        print('Env infos        :', path['env_infos'][i])
+        print('------------------')
+    
+    # Do plot and animate from the post trained environment
+    post_trained = RunPostTrainedEnv(expl_env)
+    post_trained.do_plot_and_animate(plot_1=True,
+                                     plot_2=True,
+                                     plot_3=True,
+                                     plot_4=True,
+                                     animation=True)
+
+# Test MDPPathCollector.collect_new_paths
+test10 = True 
+test10 = False
+
+if test10:
     # Do for single episode only
     max_path_length = args.max_sampling_frequency
     num_expl_steps_per_train_loop=2*max_path_length
@@ -1310,4 +1786,66 @@ if test8:
     plt.show()
 
     print('-------------------------------------------------')
+
+# Test PathReader with manual action
+test11 = True 
+test11 = False
+
+if test11:    
+    action_path = [env.do_normalize_action(np.deg2rad(0)),
+                   env.do_normalize_action(np.deg2rad(0)),
+                   env.do_normalize_action(np.deg2rad(0)),
+                   env.do_normalize_action(np.deg2rad(0)),
+                   env.do_normalize_action(np.deg2rad(0)),
+                   env.do_normalize_action(np.deg2rad(0)),
+                   env.do_normalize_action(np.deg2rad(0))]
+    
+    # Instantiate the action_path_reader
+    action_path_reader = ActionPathReader(action_path)
+    
+    # Read, plot, then animate the paths
+    env_info = action_path_reader.read_action_path()
+    print('Environment status:',env_info['events'])
+    action_path_reader.do_plot(plot_1=False,
+                               plot_2=False,
+                               plot_3=True,
+                               plot_4=True) 
+    action_path_reader.animate(animation=True)
+    
+# Test PathReader with sampled action (Failed)
+test12 = True 
+test12 = False
+
+if test12:
+    # Get the path
+    max_path_length = args.max_sampling_frequency
+    num_expl_steps_per_train_loop=1*max_path_length
+    discard_incomplete_paths = True
+    policy.to(ptu.device)   
+    paths = expl_path_collector.collect_new_paths(max_path_length=max_path_length,
+                                                  num_steps=num_expl_steps_per_train_loop,
+                                                  discard_incomplete_paths=discard_incomplete_paths)
+    print('-------------------------------------------------')
+    print('Path length:', len(paths))
+    
+    idx = 0
+    action_path = paths[idx]['actions']
+    env_infos_path = paths[idx]['env_infos']
+    for i, action in enumerate(action_path):
+        print("Action {}: = {}/{}".format(i, action[0], np.rad2deg(env.do_denormalize_action(action[0]))[0]))
+        print("Env infos: {}".format(env_infos_path[i]))
+        print('---')
+
+    
+    # # Instantiate the action_path_reader
+    # action_path_reader = ActionPathReader(action_path)
+    
+    # # Read, plot, then animate the paths
+    # env_info = action_path_reader.read_action_path()
+    # print('Environment status:',env_info['events'])
+    # # action_path_reader.do_plot(plot_1=False,
+    # #                            plot_2=False,
+    # #                            plot_3=True,
+    # #                            plot_4=True) 
+    # action_path_reader.animate(animation=True)
     

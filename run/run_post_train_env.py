@@ -1,82 +1,66 @@
-from run.env_args import get_env_args
-from run.env_setup import prepare_multiship_rl_env
-from run.path_collect_setup import get_path_collector
-
-import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from utils.center_plot import center_plot_window
 from utils.animate import RLShipTrajectoryAnimator
+import os
 
-class ActionPathReader():
-    '''
-    Takes a action_path, simulate over, then plot the data
-    '''
-    def __init__(self, action_path):
+class RunPostTrainedEnv():
+    def __init__(self, env):
+        '''
+        Takes post-trained wrapped environment, then plot and animate the results
+        '''
+        self.expl_env = env
         
-        self.args = get_env_args()
+        self.test = self.expl_env.wrapped_env.test
+        self.obs = self.expl_env.wrapped_env.obs
         
-        self.env, self.assets = prepare_multiship_rl_env(self.args)
-        
-        self.test, self.obs = self.assets
-        
-        expl_env, eval_env, policy, eval_policy, eval_path_collector, expl_path_collector, replay_buffer = get_path_collector(self.env)
-        
-        self.expl_env = expl_env
-        self.eval_env = eval_env
-        self.policy = policy
-        self.eval_policy = eval_policy
-        self.eval_path_collector = eval_path_collector
-        self.expl_path_collector = expl_path_collector
-        self.replay_buffer = replay_buffer
-        
-        # Get action list
-        self.actions = action_path
-        
-    def read_action_path(self):
-        # Initialize
-        act_idx = 0
-        combined_done = 0
-        env_info = {
-            'events'            : [],
-            'terminal'          : False,
-            'test_ship_stop'    : False,
-            'obs_ship_stop'     : False,
-        }
-        
-        
-        # Break when we we encounter done
-        while not combined_done:
-            # Get action
-            action = self.actions[act_idx]
-            
-            # Step up if not combined_done
-            _, _, combined_done, env_info = self.expl_env.step(action)
-            
-            # If we encounter done, but the simulator didn't experience anything, break
-            if act_idx >= (len(self.actions)-1):
-                print(len(self.actions))
-                break
-            
-            # Increment act_idx
-            act_idx += 1
-            
         # Get the simulation results for all assets
         self.ts_results_df = pd.DataFrame().from_dict(self.expl_env.wrapped_env.test.ship_model.simulation_results)
         self.os_results_df = pd.DataFrame().from_dict(self.expl_env.wrapped_env.obs.ship_model.simulation_results)
-
-        # Get the time when the sampling begin, failure modes and the waypoints
-        self.waypoint_sampling_times = self.expl_env.wrapped_env.waypoint_sampling_times
         
-        return env_info
-    
-    def do_plot(self,
-                 plot_1=False,
-                 plot_2=False,
-                 plot_3=True,
-                 plot_4=True):
+    def do_plot_and_animate(self,
+                            plot_1=True,
+                            plot_2=True,
+                            plot_3=True,
+                            plot_4=True,
+                            animation=True):
+        if animation:
+            test_route = {'east': self.test.auto_pilot.navigate.east, 'north': self.test.auto_pilot.navigate.north}
+            obs_route = {'east': self.obs.auto_pilot.navigate.east, 'north': self.obs.auto_pilot.navigate.north}
+            waypoint_sampling_times = self.expl_env.wrapped_env.waypoint_sampling_times
+            waypoints = list(zip(self.obs.auto_pilot.navigate.east, self.obs.auto_pilot.navigate.north))
+            map_obj = self.expl_env.wrapped_env.map
+            radius_of_acceptance = self.expl_env.wrapped_env.args.radius_of_acceptance
+            timestamps = self.test.time_list
+            interval = self.expl_env.wrapped_env.args.time_step * 1000
+            test_drawer=self.test.ship_model.draw
+            obs_drawer=self.obs.ship_model.draw
+            test_headings=self.ts_results_df["yaw angle [deg]"]
+            obs_headings=self.os_results_df["yaw angle [deg]"]
+            is_collision_imminent_list = self.expl_env.wrapped_env.is_collision_imminent_list
+            is_collision_list = self.expl_env.wrapped_env.is_collision_list
+            
+            # Do animation
+            animator = RLShipTrajectoryAnimator(self.ts_results_df,
+                                                self.os_results_df,
+                                                test_route,
+                                                obs_route,
+                                                waypoint_sampling_times,
+                                                waypoints,
+                                                map_obj,
+                                                radius_of_acceptance,
+                                                timestamps,
+                                                interval,
+                                                test_drawer,
+                                                obs_drawer,
+                                                test_headings,
+                                                obs_headings,
+                                                is_collision_imminent_list,
+                                                is_collision_list)
+            fps = 480
+            animator.run(fps)
         
         # Create a No.4 2x4 grid for accumulated reward subplots
         if plot_4:
@@ -177,7 +161,7 @@ class ActionPathReader():
 
             # Plot 2.1: Forward Speed
             axes[0].plot(self.ts_results_df['time [s]'], self.ts_results_df['forward speed [m/s]'])
-            axes[0].axhline(y=self.test_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
+            axes[0].axhline(y=self.test.desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
             axes[0].set_title('Test Ship Forward Speed [m/s]')
             axes[0].set_xlabel('Time (s)')
             axes[0].set_ylabel('Forward Speed (m/s)')
@@ -186,7 +170,7 @@ class ActionPathReader():
 
             # Plot 3.1: Forward Speed
             axes[1].plot(self.os_results_df['time [s]'], self.os_results_df['forward speed [m/s]'])
-            axes[1].axhline(y=self.obs_desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
+            axes[1].axhline(y=self.obs.desired_forward_speed, color='red', linestyle='--', linewidth=1.5, label='Desired Forward Speed')
             axes[1].set_title('Obstacle Ship Forward Speed [m/s]')
             axes[1].set_xlabel('Time (s)')
             axes[1].set_ylabel('Forward Speed (m/s)')
@@ -302,9 +286,9 @@ class ActionPathReader():
             for x, y in zip(self.obs.ship_model.ship_drawings[1], self.obs.ship_model.ship_drawings[0]):
                 plt.plot(x, y, color='red')
             for i, (east, north) in enumerate(zip(self.obs.auto_pilot.navigate.east, self.obs.auto_pilot.navigate.north)):
-                obs_radius_circle = Circle((east, north), self.args.radius_of_acceptance, color='red', alpha=0.3, fill=True)
+                obs_radius_circle = Circle((east, north), self.expl_env.args.radius_of_acceptance, color='red', alpha=0.3, fill=True)
                 plt.gca().add_patch(obs_radius_circle)
-            map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
+            self.expl_env.wrapped_env.map.plot_obstacle(plt.gca())  # get current Axes to pass into map function
 
             plt.xlim(0, 20000)
             plt.ylim(0, 10000)
@@ -319,51 +303,3 @@ class ActionPathReader():
         
         # Show Plot
         plt.show()
-    
-    def animate(self,
-                animation=True):
-        if animation:
-            test_route = {'east': self.test.auto_pilot.navigate.east, 'north': self.test.auto_pilot.navigate.north}
-            obs_route = {'east': self.obs.auto_pilot.navigate.east, 'north': self.obs.auto_pilot.navigate.north}
-            waypoint_sampling_times = self.expl_env.wrapped_env.waypoint_sampling_times
-            waypoints = list(zip(self.obs.auto_pilot.navigate.east, self.obs.auto_pilot.navigate.north))
-            map_obj = self.expl_env.wrapped_env.map
-            radius_of_acceptance = self.args.radius_of_acceptance
-            timestamps = self.test.time_list
-            interval = self.args.time_step * 1000
-            test_drawer=self.test.ship_model.draw
-            obs_drawer=self.obs.ship_model.draw
-            test_headings=self.ts_results_df["yaw angle [deg]"]
-            obs_headings=self.os_results_df["yaw angle [deg]"]
-            is_collision_imminent_list = self.expl_env.wrapped_env.is_collision_imminent_list
-            is_collision_list = self.expl_env.wrapped_env.is_collision_list
-            
-            # Do animation
-            animator = RLShipTrajectoryAnimator(self.ts_results_df,
-                                                self.os_results_df,
-                                                test_route,
-                                                obs_route,
-                                                waypoint_sampling_times,
-                                                waypoints,
-                                                map_obj,
-                                                radius_of_acceptance,
-                                                timestamps,
-                                                interval,
-                                                test_drawer,
-                                                obs_drawer,
-                                                test_headings,
-                                                obs_headings,
-                                                is_collision_imminent_list,
-                                                is_collision_list)
-            
-            ani_ID = 1
-            ani_dir = os.path.join('animation', 'comparisons')
-            filename  = "trajectory.mp4"
-            video_path = os.path.join(ani_dir, filename)
-            fps = 480
-            
-            # Create the output directory if it doesn't exist
-            os.makedirs(ani_dir, exist_ok=True)
-            
-            # animator.save(video_path, fps)
-            animator.run(fps)
