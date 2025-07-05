@@ -46,22 +46,90 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 # Argument Parser
 parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Args')
 
+# parser.add_argument('--max_sampling_frequency', type=int, default=9, metavar='N_SAMPLE',
+#                     help='maximum amount of action sampling per episode (default: 7)')
+# parser.add_argument('--time_step', type=int, default=2, metavar='TIMESTEP',
+#                     help='time step size in second for ship transit simulator (default: 2)')
+# parser.add_argument('--radius_of_acceptance', type=int, default=250, metavar='ROA',
+#                     help='radius of acceptance for LOS algorithm (default: 200)')
+# parser.add_argument('--lookahead_distance', type=int, default=1000, metavar='LD',
+#                     help='lookahead distance for LOS algorithm (default: 1000)')
+# parser.add_argument('--collav_mode', type=str, default='sbmpc', metavar='COLLAV_MODE',
+#                     help='collision avoidance mode. Mode are [None, "simple", "sbmpc"] (default: "sbmpc")'),
+# parser.add_argument('--ship_draw', type=bool, default=True, metavar='SHIP_DRAW',
+#                     help='record ship drawing for plotting and animation (default: True)')
+# parser.add_argument('--time_since_last_ship_drawing', default=30, metavar='SHIP_DRAW_TIME',
+#                     help='time delay in second between ship drawing record (default: 30)')
+# parser.add_argument('--normalize_action', type=bool, default=False, metavar='NORM_ACT',
+#                     help='normalize environment action space (default: False)')
+
+## Add arguments for environments
 parser.add_argument('--max_sampling_frequency', type=int, default=9, metavar='N_SAMPLE',
-                    help='maximum amount of action sampling per episode (default: 7)')
+                    help='ENV: maximum amount of action sampling per episode (default: 9)')
 parser.add_argument('--time_step', type=int, default=2, metavar='TIMESTEP',
-                    help='time step size in second for ship transit simulator (default: 2)')
+                    help='ENV: time step size in second for ship transit simulator (default: 2)')
 parser.add_argument('--radius_of_acceptance', type=int, default=250, metavar='ROA',
-                    help='radius of acceptance for LOS algorithm (default: 200)')
+                    help='ENV: radius of acceptance for LOS algorithm (default: 250)')
 parser.add_argument('--lookahead_distance', type=int, default=1000, metavar='LD',
-                    help='lookahead distance for LOS algorithm (default: 1000)')
+                    help='ENV: lookahead distance for LOS algorithm (default: 1000)')
 parser.add_argument('--collav_mode', type=str, default='sbmpc', metavar='COLLAV_MODE',
-                    help='collision avoidance mode. Mode are [None, "simple", "sbmpc"] (default: "sbmpc")'),
+                    help='ENV: collision avoidance mode. Modes are ["none", "simple", "sbmpc"] (default: "sbmpc")'),
 parser.add_argument('--ship_draw', type=bool, default=True, metavar='SHIP_DRAW',
-                    help='record ship drawing for plotting and animation (default: True)')
+                    help='ENV: record ship drawing for plotting and animation (default: True)')
 parser.add_argument('--time_since_last_ship_drawing', default=30, metavar='SHIP_DRAW_TIME',
-                    help='time delay in second between ship drawing record (default: 30)')
+                    help='ENV: time delay in second between ship drawing record (default: 30)')
 parser.add_argument('--normalize_action', type=bool, default=False, metavar='NORM_ACT',
-                    help='normalize environment action space (default: False)')
+                    help='ENV: normalize environment action space (default: False)')
+
+## Add arguments for soft actor-critic algorithm
+parser.add_argument('--do_logging', type=bool, default=True, metavar='DO_LOG',
+                    help='SAC_A: Activate training logging (default: True)')
+parser.add_argument('--algorithm', type=str, default='SAC', metavar='RL_ALG',
+                    help='SAC_A: RL algorithm type for AST (default: "SAC")')
+parser.add_argument('--version', type=str, default='normal', metavar='VERSION',
+                    help='SAC_A: RL version (default: "normal")')
+parser.add_argument('--layer_size', type=int, default=256, metavar='LAYER_SIZE',
+                    help='SAC_A: hidden layer size for all neural networks (default: 256)')
+parser.add_argument('--replay_buffer_size', type=int, default=300000, metavar='BUFFER_SIZE',
+                    help='SAC_A: replay buffer size (default: 1E6)')
+parser.add_argument('--batch_size', type=int, default=256, metavar='BATCH_SIZE',
+                    help='SAC_A: data batch size for training (default: 256)')
+# EPOCHS/TRAINS/STEPS COUNT
+# step  : a single interaction with the environment
+#           - collection of (s, a, r, s'. done)
+# train : a single gradient update on the policy/networks
+#           - training step to get transition from replay buffer, compute losses, then backpropagate
+#           - a single batch size use is counted as a single training step
+# epoch  : a full training cycle of learning + evaluation + logging
+parser.add_argument('--num_epochs', type=int, default=3000, metavar='N_EPOCHS',
+                    help='SAC_A: number of full training iterations (default: 3000)')
+parser.add_argument('--num_eval_steps_per_epoch', type=int, default=180, metavar='N_EVAL_STEPS',
+                    help='SAC_A: number of evaluation steps at the end of each epoch (default: 5000)') ## NEED TO CHECK
+parser.add_argument('--num_trains_per_train_loop', type=int, default=360, metavar='N_TRAINS',
+                    help='SAC_A: number of gradient updates to run per training loop (default: 1000)')
+parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=90, metavar='N_EXPL_STEPS',
+                    help='SAC_A: number of exploration steps during training (default: 1000)')  ## NEED TO CHECK
+parser.add_argument('--min_num_steps_before_training', type=int, default=270, metavar='MIN_N_STEPS',
+                    help='SAC_A: delayed start — buffer pre-filled with random actions \
+                                    to stabilize early learning (default: 1000)') # NEED TO CHECK
+parser.add_argument('--max_path_length', type=int, default=9, metavar='MAX_PATH_LEN',
+                    help='SAC_A: maximum number of steps per episode before termination (default: 9)') # NEED TO CHECK
+
+## Add arguments for soft actor-critic trainer
+parser.add_argument('--discount', type=float, default=0.99, metavar='DISCOUNT_FACTOR',
+                    help='SAC_T: discount factor for future rewards (default: 0.99)')
+parser.add_argument('--soft_target_tau', type=float, default=5E-3, metavar='SAC_TEMP',
+                    help='SAC_T: temperature factor for target network soft updates (default: 5E-3)')
+parser.add_argument('--target_update_period', type=int, default=1, metavar='TARGET_UPDATE',
+                    help='SAC_T: target network weights update counts in steps (default: 1)')
+parser.add_argument('--policy_lr', type=float, default=3E-4, metavar='POLICY_LR',
+                    help='SAC_T: policy networks learning rate (default: 3E-4)')
+parser.add_argument('--qf_lr', type=float, default=3E-4, metavar='QF_LR',
+                    help='SAC_T: Q-function networks learning rate (default: 3E-4)')
+parser.add_argument('--reward_scale', type=int, default=1, metavar='REWARD_SCALE',
+                    help='SAC_T: scale factor for rewards (default: 1)')
+parser.add_argument('--use_automatic_entropy_tuning', type=bool, default=True, metavar='AUTO_ENTROPY',
+                    help='SAC_T: adaptive entropy coefficient tuning if True (default: True)')
 
 args = parser.parse_args()
 
@@ -298,32 +366,33 @@ eval_env = NormalizedBoxEnv(env)
 obsv_dim = expl_env.observation_space.low.size
 action_dim = expl_env.action_space.low.size
 
+## Perpare the RL variant
 variant = dict(
-        algorithm="SAC",
-        version="normal",
-        layer_size=256,
-        replay_buffer_size=int(1E6),
-        algorithm_kwargs=dict(
-            num_epochs=3000,
-            num_eval_steps_per_epoch=5000,
-            num_trains_per_train_loop=1000,
-            num_expl_steps_per_train_loop=1000,
-            min_num_steps_before_training=1000,
-            max_path_length=1000,
-            batch_size=256,
-        ),
-        trainer_kwargs=dict(
-            discount=0.99,
-            soft_target_tau=5e-3,
-            target_update_period=1,
-            policy_lr=3E-4,
-            qf_lr=3E-4,
-            reward_scale=1,
-            use_automatic_entropy_tuning=True,
-        ),
-    )
+    algorithm=args.algorithm,
+    version=args.version,
+    layer_size=args.layer_size,
+    replay_buffer_size=args.replay_buffer_size,
+    algorithm_kwargs=dict(
+        num_epochs=args.num_epochs,
+        num_eval_steps_per_epoch=args.num_eval_steps_per_epoch,
+        num_trains_per_train_loop=args.num_trains_per_train_loop,
+        num_expl_steps_per_train_loop=args.num_expl_steps_per_train_loop,
+        min_num_steps_before_training=args.min_num_steps_before_training,
+        max_path_length=args.max_path_length,
+        batch_size=args.batch_size,
+    ),
+    trainer_kwargs=dict(
+        discount=args.discount,
+        soft_target_tau=args.soft_target_tau,
+        target_update_period=args.target_update_period,
+        policy_lr=args.policy_lr,
+        qf_lr=args.qf_lr,
+        reward_scale=args.reward_scale,
+        use_automatic_entropy_tuning=args.use_automatic_entropy_tuning,
+    ),
+)
 log = False
-# log = True
+log = True
 if log:
     setup_logger('sanity_checks', variant=variant)
 ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
@@ -379,19 +448,19 @@ trainer = SACTrainer(
         target_qf2=target_qf2,
         **variant['trainer_kwargs']
     )
-# algorithm = TorchBatchRLAlgorithm(
-#         trainer=trainer,
-#         exploration_env=expl_env,
-#         evaluation_env=eval_env,
-#         exploration_data_collector=expl_path_collector,
-#         evaluation_data_collector=eval_path_collector,
-#         replay_buffer=replay_buffer,
-#         **variant['algorithm_kwargs']
-#     )
-# algorithm.to(ptu.device)
-# algorithm.train()
+algorithm = TorchBatchRLAlgorithm(
+        trainer=trainer,
+        exploration_env=expl_env,
+        evaluation_env=eval_env,
+        exploration_data_collector=expl_path_collector,
+        evaluation_data_collector=eval_path_collector,
+        replay_buffer=replay_buffer,
+        **variant['algorithm_kwargs']
+    )
+algorithm.to(ptu.device)
+algorithm.train()
 
-# print('-------------------------------------------------')
+print('-------------------------------------------------')
 
 # Check normalized_box_env() performance
 test1 = True
@@ -1389,7 +1458,7 @@ if test8:
 
 # Test ast_sac_rollout() alone
 test9=True
-# test9=False
+test9=False
 
 if test9:
     start_time = time.time()
