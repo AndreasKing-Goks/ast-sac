@@ -21,11 +21,11 @@ class ShowPostTrainedEnvResult():
         self.os_results_df = pd.DataFrame().from_dict(self.expl_env.wrapped_env.obs.ship_model.simulation_results)
         
     def do_plot_and_animate(self,
-                            plot_1=True,
-                            plot_2=True,
-                            plot_3=True,
-                            plot_4=True,
-                            animation=True):
+                            plot_1=False,
+                            plot_2=False,
+                            plot_3=False,
+                            plot_4=False,
+                            animation=False):
         if animation:
             test_route = {'east': self.test.auto_pilot.navigate.east, 'north': self.test.auto_pilot.navigate.north}
             obs_route = {'east': self.obs.auto_pilot.navigate.east, 'north': self.obs.auto_pilot.navigate.north}

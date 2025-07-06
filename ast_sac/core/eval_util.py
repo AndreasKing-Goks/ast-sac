@@ -41,6 +41,9 @@ def get_generic_path_information(paths, stat_prefix=''):
                 for p in paths
             ]
             for k in all_env_infos[0].keys():
+                sample = all_env_infos[0][k][0]
+                if not np.issubdtype(np.array(sample).dtype, np.number):
+                    continue
                 final_ks = np.array([info[k][-1] for info in all_env_infos])
                 first_ks = np.array([info[k][0] for info in all_env_infos])
                 all_ks = np.concatenate([info[k] for info in all_env_infos])

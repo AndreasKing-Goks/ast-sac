@@ -98,6 +98,13 @@ class SACTrainer(TorchTrainer, LossFunction):
             batch,
             skip_statistics=not self._need_to_update_eval_statistics,
         )
+        # ========= DEBUG CHECK =========
+        # for loss_name, loss_value in losses._asdict().items():
+        #     if torch.isnan(loss_value).any():
+        #         print(f"NaN detected in loss: {loss_name}")
+        #     if torch.isinf(loss_value).any():
+        #         print(f"Inf detected in loss: {loss_name}")
+        # ===============================
         '''
         Update networks
         '''
@@ -143,6 +150,7 @@ class SACTrainer(TorchTrainer, LossFunction):
         self,
         batch,
         skip_statistics=False,
+        debug=False
     ) -> Tuple[SACLosses, LossStatistics]:
         rewards = batch['rewards']
         terminals = batch['terminals']
@@ -153,6 +161,11 @@ class SACTrainer(TorchTrainer, LossFunction):
         """
         Policy and Alpha Loss
         """
+         # ========= DEBUG CHECK =========
+        if debug:
+            print("obs:", torch.isnan(obs).any(), torch.isinf(obs).any())
+            print("actions:", torch.isnan(actions).any(), torch.isinf(actions).any())
+        # ===============================
         dist = self.policy(obs)
         new_obs_actions, log_pi = dist.rsample_and_logprob()
         log_pi = log_pi.unsqueeze(-1)
@@ -163,10 +176,22 @@ class SACTrainer(TorchTrainer, LossFunction):
             alpha_loss = 0
             alpha = 1
 
+        # ========= DEBUG CHECK =========
+        if debug:
+            print("new_obs_actions:", torch.isnan(new_obs_actions).any(), torch.isinf(new_obs_actions).any())
+            print("log_pi:", torch.isnan(log_pi).any(), torch.isinf(log_pi).any())
+        # ===============================
+        
         q_new_actions = torch.min(
             self.qf1(obs, new_obs_actions),
             self.qf2(obs, new_obs_actions),
         )
+        
+        # ========= DEBUG CHECK =========
+        if debug:
+            print("q_new_actions:", torch.isnan(q_new_actions).any(), torch.isinf(q_new_actions).any())
+        # ===============================
+        
         policy_loss = (alpha*log_pi - q_new_actions).mean()
 
         """
@@ -174,6 +199,13 @@ class SACTrainer(TorchTrainer, LossFunction):
         """
         q1_pred = self.qf1(obs, actions)
         q2_pred = self.qf2(obs, actions)
+        # ========= DEBUG CHECK =========
+        if debug:
+            print('q1_pred nan:', torch.isnan(q1_pred).any().item(), 'inf:', torch.isinf(q1_pred).any().item())
+            print('q2_pred nan:', torch.isnan(q2_pred).any().item(), 'inf:', torch.isinf(q2_pred).any().item())
+            print("q1_pred range:", q1_pred.min().item(), q1_pred.max().item())
+            print("q2_pred range:", q2_pred.min().item(), q2_pred.max().item())
+        # ===============================
         next_dist = self.policy(next_obs)
         new_next_actions, new_log_pi = next_dist.rsample_and_logprob()
         new_log_pi = new_log_pi.unsqueeze(-1)
@@ -182,10 +214,30 @@ class SACTrainer(TorchTrainer, LossFunction):
             self.target_qf2(next_obs, new_next_actions),
         ) - alpha * new_log_pi
 
+        # ========= DEBUG CHECK =========
+        if debug:
+            print('target_q_values nan:', torch.isnan(target_q_values).any().item(), 'inf:', torch.isinf(target_q_values).any().item())
+            print("target_q_values range:", target_q_values.min().item(), target_q_values.max().item())
+        # ===============================
+        
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
+        # ========= DEBUG CHECK =========
+        if debug:
+            print("rewards", rewards)
+            print("target_q_values", target_q_values)
+            print("q_target", q_target)
+            print('q_target nan:', torch.isnan(q_target).any().item(), 'inf:', torch.isinf(q_target).any().item())
+        # ===============================
         qf1_loss = self.qf_criterion(q1_pred, q_target.detach())
         qf2_loss = self.qf_criterion(q2_pred, q_target.detach())
 
+        # ========= DEBUG CHECK =========
+        if debug:
+            print("qf1_loss", qf1_loss.item())
+            print("qf2_loss", qf2_loss.item())
+            print("policy_loss", policy_loss.item())
+            print('############################################################')
+        # ===============================
         """
         Save some statistics for eval
         """

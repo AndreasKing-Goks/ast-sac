@@ -1486,8 +1486,8 @@ if test9:
     post_trained.do_plot_and_animate(
                                     #  plot_1=True,
                                     #  plot_2=True,
-                                    #  plot_3=True,
-                                    #  plot_4=True,
+                                     plot_3=True,
+                                     plot_4=True,
                                      animation=True
                                      )
     
@@ -1513,11 +1513,13 @@ if test9:
     
     # Do plot and animate from the post trained environment
     post_trained = ShowPostTrainedEnvResult(expl_env)
-    post_trained.do_plot_and_animate(plot_1=True,
-                                     plot_2=True,
+    post_trained.do_plot_and_animate(
+                                    #  plot_1=True,
+                                    #  plot_2=True,
                                      plot_3=True,
                                      plot_4=True,
-                                     animation=True)
+                                     animation=True
+                                     )
 
 # Test MDPPathCollector.collect_new_paths
 test10 = True 

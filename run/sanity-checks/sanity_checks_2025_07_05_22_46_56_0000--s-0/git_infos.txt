@@ -1,4 +1,0 @@
-directory: D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\ast_sac\..
-git hash: eccb6044c50867b6cf955cd697202db939862132
-git branch name: main
-

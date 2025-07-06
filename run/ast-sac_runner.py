@@ -51,7 +51,7 @@ def parse_cli_args():
                         help='SAC_A: hidden layer size for all neural networks (default: 256)')
     parser.add_argument('--replay_buffer_size', type=int, default=300000, metavar='BUFFER_SIZE',
                         help='SAC_A: replay buffer size (default: 1E6)')
-    parser.add_argument('--batch_size', type=int, default=256, metavar='BATCH_SIZE',
+    parser.add_argument('--batch_size', type=int, default=64, metavar='BATCH_SIZE',
                         help='SAC_A: data batch size for training (default: 256)')
     # EPOCHS/TRAINS/STEPS COUNT
     # step  : a single interaction with the environment
@@ -60,17 +60,17 @@ def parse_cli_args():
     #           - training step to get transition from replay buffer, compute losses, then backpropagate
     #           - a single batch size use is counted as a single training step
     # epoch  : a full training cycle of learning + evaluation + logging
-    parser.add_argument('--num_epochs', type=int, default=3000, metavar='N_EPOCHS',
+    parser.add_argument('--num_epochs', type=int, default=5, metavar='N_EPOCHS',
                         help='SAC_A: number of full training iterations (default: 3000)')
-    parser.add_argument('--num_eval_steps_per_epoch', type=int, default=180, metavar='N_EVAL_STEPS',
-                        help='SAC_A: number of evaluation steps at the end of each epoch (default: 5000)') ## NEED TO CHECK
-    parser.add_argument('--num_trains_per_train_loop', type=int, default=360, metavar='N_TRAINS',
-                        help='SAC_A: number of gradient updates to run per training loop (default: 1000)')
-    parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=90, metavar='N_EXPL_STEPS',
-                        help='SAC_A: number of exploration steps during training (default: 1000)')  ## NEED TO CHECK
-    parser.add_argument('--min_num_steps_before_training', type=int, default=270, metavar='MIN_N_STEPS',
+    parser.add_argument('--num_eval_steps_per_epoch', type=int, default=30, metavar='N_EVAL_STEPS',
+                        help='SAC_A: number of evaluation steps at the end of each epoch (default: 180)') ## NEED TO CHECK
+    parser.add_argument('--num_trains_per_train_loop', type=int, default=50, metavar='N_TRAINS',
+                        help='SAC_A: number of gradient updates to run per training loop (default: 360)')
+    parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=30, metavar='N_EXPL_STEPS',
+                        help='SAC_A: number of exploration steps during training (default: 90)')  ## NEED TO CHECK
+    parser.add_argument('--min_num_steps_before_training', type=int, default=30, metavar='MIN_N_STEPS',
                         help='SAC_A: delayed start — buffer pre-filled with random actions \
-                                     to stabilize early learning (default: 1000)') # NEED TO CHECK
+                                     to stabilize early learning (default: 270)') # NEED TO CHECK
     parser.add_argument('--max_path_length', type=int, default=9, metavar='MAX_PATH_LEN',
                         help='SAC_A: maximum number of steps per episode before termination (default: 9)') # NEED TO CHECK
     
@@ -101,8 +101,8 @@ def experiment(variant, args):
     multi_ship_rl_env, _ = prepare_multiship_rl_env(args)
     
     ## Wrapped RL_Env with to accept normalized action from the policy
-    expl_env = NormalizedBoxEnv(multi_ship_rl_env)
-    eval_env = NormalizedBoxEnv(multi_ship_rl_env)
+    expl_env = NormalizedBoxEnv(multi_ship_rl_env, reward_scale=0.5)
+    eval_env = NormalizedBoxEnv(multi_ship_rl_env, reward_scale=0.5)
     
     ## Get the observation and action dimension
     obsv_dim = expl_env.observation_space.low.size
