@@ -46,23 +46,6 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 # Argument Parser
 parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Args')
 
-# parser.add_argument('--max_sampling_frequency', type=int, default=9, metavar='N_SAMPLE',
-#                     help='maximum amount of action sampling per episode (default: 7)')
-# parser.add_argument('--time_step', type=int, default=2, metavar='TIMESTEP',
-#                     help='time step size in second for ship transit simulator (default: 2)')
-# parser.add_argument('--radius_of_acceptance', type=int, default=250, metavar='ROA',
-#                     help='radius of acceptance for LOS algorithm (default: 200)')
-# parser.add_argument('--lookahead_distance', type=int, default=1000, metavar='LD',
-#                     help='lookahead distance for LOS algorithm (default: 1000)')
-# parser.add_argument('--collav_mode', type=str, default='sbmpc', metavar='COLLAV_MODE',
-#                     help='collision avoidance mode. Mode are [None, "simple", "sbmpc"] (default: "sbmpc")'),
-# parser.add_argument('--ship_draw', type=bool, default=True, metavar='SHIP_DRAW',
-#                     help='record ship drawing for plotting and animation (default: True)')
-# parser.add_argument('--time_since_last_ship_drawing', default=30, metavar='SHIP_DRAW_TIME',
-#                     help='time delay in second between ship drawing record (default: 30)')
-# parser.add_argument('--normalize_action', type=bool, default=False, metavar='NORM_ACT',
-#                     help='normalize environment action space (default: False)')
-
 ## Add arguments for environments
 parser.add_argument('--max_sampling_frequency', type=int, default=9, metavar='N_SAMPLE',
                     help='ENV: maximum amount of action sampling per episode (default: 9)')
@@ -392,7 +375,7 @@ variant = dict(
     ),
 )
 log = False
-log = True
+# log = True
 if log:
     setup_logger('sanity_checks', variant=variant)
 ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
@@ -1488,8 +1471,8 @@ if test9:
     post_trained.do_plot_and_animate(
                                     #  plot_1=True,
                                     #  plot_2=True,
-                                    #  plot_3=True,
-                                    #  plot_4=True,
+                                     plot_3=True,
+                                     plot_4=True,
                                      animation=True
                                      )
     
@@ -1498,30 +1481,30 @@ if test9:
     print('#######################################################################')
     print('#######################################################################')
     
-    # # Get path using the function
-    # path = ast_sac_rollout(expl_env,
-    #                        policy,
-    #                        max_path_length=args.max_sampling_frequency)
+    # Get path using the function
+    path = ast_sac_rollout(expl_env,
+                           policy,
+                           max_path_length=args.max_sampling_frequency)
     
-    # for i in range(len(path['actions'])):
-    #     print('STEP', i+1)
-    #     print('Observation      :', path['observations'][i])
-    #     print('Action           :', path['actions'][i])
-    #     print('Next observation :', path['next_observations'][i])
-    #     print('Terminal         :', path['terminals'][i])
-    #     print('Done             :', path['dones'][i])
-    #     print('Env infos        :', path['env_infos'][i])
-    #     print('------------------')
+    for i in range(len(path['actions'])):
+        print('STEP', i+1)
+        print('Observation      :', path['observations'][i])
+        print('Action           :', path['actions'][i])
+        print('Next observation :', path['next_observations'][i])
+        print('Terminal         :', path['terminals'][i])
+        print('Done             :', path['dones'][i])
+        print('Env infos        :', path['env_infos'][i])
+        print('------------------')
     
-    # # Do plot and animate from the post trained environment
-    # post_trained = ShowPostTrainedEnvResult(expl_env)
-    # post_trained.do_plot_and_animate(
-    #                                 #  plot_1=True,
-    #                                 #  plot_2=True,
-    #                                  plot_3=True,
-    #                                  plot_4=True,
-    #                                  animation=True
-    #                                  )
+    # Do plot and animate from the post trained environment
+    post_trained = ShowPostTrainedEnvResult(expl_env)
+    post_trained.do_plot_and_animate(
+                                    #  plot_1=True,
+                                    #  plot_2=True,
+                                     plot_3=True,
+                                     plot_4=True,
+                                     animation=True
+                                     )
 
 # Test MDPPathCollector.collect_new_paths
 test10 = True 

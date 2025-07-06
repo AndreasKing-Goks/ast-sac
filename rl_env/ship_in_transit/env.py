@@ -280,6 +280,9 @@ class MultiShipRLEnv(Env):
         # Reset the waypoint sampling time tracker
         self.waypoint_sampling_times = []
         
+        # Reset up the Reward Tracker
+        self.reward_tracker = RewardTracker()
+        
         # Reset the containers for anmiation
         self.is_collision_imminent_list = []
         self.is_collision_list = []

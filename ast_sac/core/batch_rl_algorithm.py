@@ -86,14 +86,14 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             )
             gt.stamp('exploration sampling', unique=False)
 
-            # === DEBUGGING BLOCK START ===
-            if debug:
-                for i, path in enumerate(new_expl_paths):
-                    rewards = path["rewards"]
-                    print(f"[Expl Path {i}] Sum: {np.sum(rewards):.3f}, Min: {np.min(rewards):.3f}, Max: {np.max(rewards):.3f}, Len: {len(rewards)}")
-                    if np.any(np.isnan(rewards)) or np.any(np.isinf(rewards)):
-                        print(f"[WARNING] NaN or Inf in reward path {i}")
-            # === DEBUGGING BLOCK END ===
+            # # === DEBUGGING BLOCK START ===
+            # if debug:
+            #     for i, path in enumerate(new_expl_paths):
+            #         rewards = path["rewards"]
+            #         print(f"[Expl Path {i}] Sum: {np.sum(rewards):.3f}, Min: {np.min(rewards):.3f}, Max: {np.max(rewards):.3f}, Len: {len(rewards)}")
+            #         if np.any(np.isnan(rewards)) or np.any(np.isinf(rewards)):
+            #             print(f"[WARNING] NaN or Inf in reward path {i}")
+            # # === DEBUGGING BLOCK END ===
             
             if not self.offline_rl:
                 self.replay_buffer.add_paths(new_expl_paths)
