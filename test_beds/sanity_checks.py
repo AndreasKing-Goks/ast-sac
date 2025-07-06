@@ -392,7 +392,7 @@ variant = dict(
     ),
 )
 log = False
-# log = True
+log = True
 if log:
     setup_logger('sanity_checks', variant=variant)
 ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
@@ -1458,7 +1458,7 @@ if test8:
 
 # Test ast_sac_rollout() alone
 test9=True
-# test9=False
+test9=False
 
 if test9:
     start_time = time.time()

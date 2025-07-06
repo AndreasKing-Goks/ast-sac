@@ -91,7 +91,7 @@ Available columns:
 '''
 
 # Get the progress.csv path
-csv_path = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_06_02_02_52_0000--s-0\progress.csv'
+csv_path = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_06_09_09_57_0000--s-0\progress.csv'
 
 # Instantiate the plotter
 plotter = ProgressPlotter(csv_path)
