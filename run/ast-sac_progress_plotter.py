@@ -91,7 +91,7 @@ Available columns:
 '''
 
 # Get the progress.csv path
-csv_path = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_06_09_09_57_0000--s-0\progress.csv'
+csv_path = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_06_11_04_32_0000--s-0\progress.csv'
 
 # Instantiate the plotter
 plotter = ProgressPlotter(csv_path)
@@ -99,14 +99,14 @@ plotter = ProgressPlotter(csv_path)
 ## Learning Stability & Divergence Detection
 # Plot the Q-function Losses
 plot_1 = True
-plot_1 = False
+# plot_1 = False
 if plot_1:
     plotter.plot_column('trainer/QF1 Loss')
     plotter.plot_column('trainer/QF2 Loss')
 
 # Plot the Q prediction and targets
 plot_2 = True
-plot_2 = False
+# plot_2 = False
 if plot_2:
     plotter.plot_columns(['trainer/Q1 Predictions Mean', 'trainer/Q1 Predictions Min', 'trainer/Q1 Predictions Max'])
     plotter.plot_columns(['trainer/Q2 Predictions Mean', 'trainer/Q2 Predictions Min', 'trainer/Q2 Predictions Max'])
@@ -114,7 +114,7 @@ if plot_2:
 
 # Policy Loss and Entropy
 plot_3 = True
-plot_3 = False
+# plot_3 = False
 if plot_3:
     plotter.plot_column('trainer/Policy Loss')
     plotter.plot_columns(['trainer/Log Pis Mean', 'trainer/Log Pis Min', 'trainer/Log Pis Max'])
@@ -139,14 +139,14 @@ if plot_5:
 ## Reward and Return Evaluation
 # Reward and Returns (Exploration)
 plot_6 = True
-plot_6 = False
+# plot_6 = False
 if plot_6:
     plotter.plot_columns(['expl/Rewards Mean', 'expl/Rewards Max', 'expl/Rewards Min'])
     plotter.plot_columns(['expl/Returns Mean', 'expl/Returns Max', 'expl/Returns Min'])
 
 # Rewards and Returns (Evaluation)
 plot_7 = True
-plot_7 = False
+# plot_7 = False
 if plot_7:
     plotter.plot_columns(['eval/Rewards Mean', 'eval/Rewards Max', 'eval/Rewards Min'])
     plotter.plot_columns(['eval/Returns Mean', 'eval/Returns Max', 'eval/Returns Min'])

@@ -1458,7 +1458,7 @@ if test8:
 
 # Test ast_sac_rollout() alone
 test9=True
-test9=False
+# test9=False
 
 if test9:
     start_time = time.time()
@@ -1480,14 +1480,16 @@ if test9:
         print('Done             :', path['dones'][i])
         print('Env infos        :', path['env_infos'][i])
         print('------------------')
-        
+
+    print('Sum Reward       :', np.sum(path['rewards']))
+    
     # Do plot and animate from the post trained environment
     post_trained = ShowPostTrainedEnvResult(expl_env)
     post_trained.do_plot_and_animate(
                                     #  plot_1=True,
                                     #  plot_2=True,
-                                     plot_3=True,
-                                     plot_4=True,
+                                    #  plot_3=True,
+                                    #  plot_4=True,
                                      animation=True
                                      )
     
@@ -1496,30 +1498,30 @@ if test9:
     print('#######################################################################')
     print('#######################################################################')
     
-    # Get path using the function
-    path = ast_sac_rollout(expl_env,
-                           policy,
-                           max_path_length=args.max_sampling_frequency)
+    # # Get path using the function
+    # path = ast_sac_rollout(expl_env,
+    #                        policy,
+    #                        max_path_length=args.max_sampling_frequency)
     
-    for i in range(len(path['actions'])):
-        print('STEP', i+1)
-        print('Observation      :', path['observations'][i])
-        print('Action           :', path['actions'][i])
-        print('Next observation :', path['next_observations'][i])
-        print('Terminal         :', path['terminals'][i])
-        print('Done             :', path['dones'][i])
-        print('Env infos        :', path['env_infos'][i])
-        print('------------------')
+    # for i in range(len(path['actions'])):
+    #     print('STEP', i+1)
+    #     print('Observation      :', path['observations'][i])
+    #     print('Action           :', path['actions'][i])
+    #     print('Next observation :', path['next_observations'][i])
+    #     print('Terminal         :', path['terminals'][i])
+    #     print('Done             :', path['dones'][i])
+    #     print('Env infos        :', path['env_infos'][i])
+    #     print('------------------')
     
-    # Do plot and animate from the post trained environment
-    post_trained = ShowPostTrainedEnvResult(expl_env)
-    post_trained.do_plot_and_animate(
-                                    #  plot_1=True,
-                                    #  plot_2=True,
-                                     plot_3=True,
-                                     plot_4=True,
-                                     animation=True
-                                     )
+    # # Do plot and animate from the post trained environment
+    # post_trained = ShowPostTrainedEnvResult(expl_env)
+    # post_trained.do_plot_and_animate(
+    #                                 #  plot_1=True,
+    #                                 #  plot_2=True,
+    #                                  plot_3=True,
+    #                                  plot_4=True,
+    #                                  animation=True
+    #                                  )
 
 # Test MDPPathCollector.collect_new_paths
 test10 = True 
