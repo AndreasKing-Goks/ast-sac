@@ -60,17 +60,17 @@ def parse_cli_args():
     #           - training step to get transition from replay buffer, compute losses, then backpropagate
     #           - a single batch size use is counted as a single training step
     # epoch  : a full training cycle of learning + evaluation + logging
-    parser.add_argument('--num_epochs', type=int, default=30, metavar='N_EPOCHS',
-                        help='SAC_A: number of full training iterations (default: 3000)')
-    parser.add_argument('--num_eval_steps_per_epoch', type=int, default=30, metavar='N_EVAL_STEPS',
-                        help='SAC_A: number of evaluation steps at the end of each epoch (default: 180)') ## NEED TO CHECK
-    parser.add_argument('--num_trains_per_train_loop', type=int, default=30, metavar='N_TRAINS',
-                        help='SAC_A: number of gradient updates to run per training loop (default: 360)')
-    parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=30, metavar='N_EXPL_STEPS',
-                        help='SAC_A: number of exploration steps during training (default: 90)')  ## NEED TO CHECK
-    parser.add_argument('--min_num_steps_before_training', type=int, default=30, metavar='MIN_N_STEPS',
+    parser.add_argument('--num_epochs', type=int, default=750, metavar='N_EPOCHS',
+                        help='SAC_A: number of full training iterations (default: 750)')
+    parser.add_argument('--num_eval_steps_per_epoch', type=int, default=90, metavar='N_EVAL_STEPS',
+                        help='SAC_A: number of evaluation steps at the end of each epoch (default: 90)') ## NEED TO CHECK
+    parser.add_argument('--num_trains_per_train_loop', type=int, default=150, metavar='N_TRAINS',
+                        help='SAC_A: number of gradient updates to run per training loop (default: 150)')
+    parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=256, metavar='N_EXPL_STEPS',
+                        help='SAC_A: number of exploration steps during training (default: 256)')  ## NEED TO CHECK
+    parser.add_argument('--min_num_steps_before_training', type=int, default=900, metavar='MIN_N_STEPS',
                         help='SAC_A: delayed start — buffer pre-filled with random actions \
-                                     to stabilize early learning (default: 270)') # NEED TO CHECK
+                                     to stabilize early learning (default: 900)') # NEED TO CHECK
     parser.add_argument('--max_path_length', type=int, default=9, metavar='MAX_PATH_LEN',
                         help='SAC_A: maximum number of steps per episode before termination (default: 9)') # NEED TO CHECK
     
