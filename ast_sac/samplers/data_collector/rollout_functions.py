@@ -147,6 +147,8 @@ def ast_sac_rollout(
         actions.append(a)
         next_observations.append(next_o)
         agent_infos.append(agent_info)
+        # if env_info['events'] == '|Learning agent samples false intermediate waypoints!|':
+        #     print('hi')
         env_infos.append(env_info)
         path_length += 1
         

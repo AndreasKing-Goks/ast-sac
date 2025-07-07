@@ -99,8 +99,8 @@ class MultiShipRLEnv(Env):
         else:
             # Scoping Angle between -30 degree to 30 degree, but in radians
             self.action_space = Box(
-                low = np.array([-np.pi/6], dtype=np.float32),
-                high = np.array([np.pi/6], dtype=np.float32),
+                low = np.array([-np.deg2rad(25)], dtype=np.float32),
+                high = np.array([np.deg2rad(25)], dtype=np.float32),
             dtype=np.float32)
         
         # Define initial state
@@ -174,6 +174,8 @@ class MultiShipRLEnv(Env):
             Useful for step() return values when is_sampling_failure() is True.
         '''
         self.next_observations = self.initial_states
+        self.accumulated_reward = 0
+        self.accumulated_rewards_list = []
         self.env_info = {
                         'events'            : '',
                         'terminal'          : False,
@@ -639,9 +641,6 @@ class MultiShipRLEnv(Env):
         is_reach_roa = False
         combined_done = False
         
-        # Set up container
-        accumulated_rewards = 0
-        
         # If the action is not none and need the action is already normalized
         scoping_angle = action
         if self.args.normalize_action and action is not None:
@@ -675,7 +674,8 @@ class MultiShipRLEnv(Env):
                 
                 # Get the snapshots, update the env_info, and set combined_done as True
                 next_observations = self.next_observations
-                accumulated_rewards, _ = obs_ship_IW_sampling_failure_reward(np.sum(self.reward_tracker.total), 
+                # We get the accumulated rewards here based on the previously collected self.accumulated rewards when is_sampling_failure
+                accumulated_rewards, _ = obs_ship_IW_sampling_failure_reward(self.accumulated_rewards, 
                                                                              is_sampling_failure,
                                                                              termination_multiplier=0.5)
                 
@@ -688,9 +688,13 @@ class MultiShipRLEnv(Env):
                 
                 # Update the reward tracker
                 self.reward_tracker.update_r_total_only(accumulated_rewards)
+                self.accumulated_rewards_list.append(accumulated_rewards)
                 
                 return next_observations, accumulated_rewards, combined_done, env_info
-        
+
+            # Reset only when we can do scoping angle sampling
+            self.accumulated_rewards = 0
+            
         # If reaching RoA, not done, and within simulation time limit do stepping with intermediate waypoints
         # If not, just step the simulator
         while (not is_reach_roa and not combined_done):
@@ -698,7 +702,7 @@ class MultiShipRLEnv(Env):
             next_states, rewards, combined_done, env_info = self._step()
             
             # Accumulate the next reward for the AST-SAC and record it to class attribute
-            accumulated_rewards += rewards
+            self.accumulated_rewards += rewards
             
             # Re-checking if the obstacle ship reach the radius of acceptance region
             north_position = self.obs.ship_model.north
@@ -719,9 +723,13 @@ class MultiShipRLEnv(Env):
                 # Then, the next states become the next observations, the break the current looping
                 next_observations = next_states
                 
+                # Retrieve the accumulated rewards from self.accumulated rewards, then reset it
+                accumulated_rewards = self.accumulated_rewards
+                
                 # Record the ast-sac results snapshots
                 self.next_observations = next_observations
                 self.env_info = env_info
+                self.accumulated_rewards_list.append(accumulated_rewards)
                 
                 break
             
@@ -731,7 +739,8 @@ class MultiShipRLEnv(Env):
                 next_states, rewards, combined_done, env_info = self._step()
                 
                 # Accumulate the next reward for the AST-SAC and record it to class attribute
-                accumulated_rewards += rewards
+                self.accumulated_rewards += rewards
+                accumulated_rewards = self.accumulated_rewards
                 
                 # Then, the next states become the next observations, the break the current looping
                 next_observations = next_states
@@ -749,7 +758,8 @@ class MultiShipRLEnv(Env):
                         next_states, rewards, combined_done, env_info = self._step()
                         
                         # Accumulate the next reward for the AST-SAC and record it to class attribute
-                        accumulated_rewards += rewards
+                        self.accumulated_rewards += rewards
+                        accumulated_rewards = self.accumulated_rewards
 
                         # Then, the next states become the next observations, the break the current looping
                         next_observations = next_states
@@ -757,6 +767,7 @@ class MultiShipRLEnv(Env):
                 # Record the ast-sac results snapshots
                 self.next_observations = next_observations
                 self.env_info = env_info
+                self.accumulated_rewards_list.append(accumulated_rewards)
                 break
         
         return next_observations, accumulated_rewards, combined_done, env_info

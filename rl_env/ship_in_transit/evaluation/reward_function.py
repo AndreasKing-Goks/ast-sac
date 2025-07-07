@@ -261,12 +261,12 @@ def get_reward_and_env_info(env_args,
     return r_total, env_info
     
 
-def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision, termination_multiplier=100.0):
+def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision, termination_multiplier=10.0):
     '''
     * ships_distance is ALWAYS a positive value
     The reward design consists of two evaluation functions:
     - Reward Design 4 for handling encounter reward
-        + The goal is to increase the reward when the both ship is getting closer (within 3 km) 
+        + The goal is to increase the reward when the both ship is getting closer (within 10 km) 
           and in a head-on or crossing condition
     - Another Reward Design 4 for handing overtake reward:
         + The goal is to still reward the agent because the ship still in proximity, but it decays much 
@@ -276,10 +276,11 @@ def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision, t
     Note: Reward Design parameter is obtained by self tune process
     '''
     # Initiate reward designs, termination status, trigger distance, and initial reward
-    encounter_reward = RewardDesign4(target=0, offset_param=1500000)
+    # encounter_reward = RewardDesign4(target=0, offset_param=1500000)
+    encounter_reward = RewardDesign4(target=0, offset_param=20000000)
     overtake_reward  = RewardDesign4(target=0, offset_param=5000)
     termination = False
-    trigger_distance = 3000
+    trigger_distance = 10000
     release_distance = 200
     reward = 0
     
@@ -300,7 +301,7 @@ def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision, t
             
     return reward, termination
 
-def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termination_multiplier=50.0):
+def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termination_multiplier=5.0):
     '''
     * ship_ground_distance is ALWAYS a positive value
     The reward design is based on Reward Design 4:
@@ -336,7 +337,7 @@ def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding, termi
 
     return reward, termination
 
-def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold = 3000, termination_multiplier=25.0):
+def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold = 3000, termination_multiplier=5.0):
     '''
     * Cross track error is ALWAYS a positive value
     The reward design is based on Reward Design 3:
@@ -364,7 +365,7 @@ def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold 
     
     return reward, termination
 
-def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding, termination_multiplier=50.0):
+def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding, termination_multiplier=2.5):
     '''
     * ship_ground_distance is ALWAYS a positive value
     The reward design is based on Reward Design 4:
@@ -400,7 +401,7 @@ def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding, terminat
 
     return reward, termination
 
-def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 500, termination_multiplier=25.0):
+def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 500, termination_multiplier=2.5):
     '''
     * Cross track error is ALWAYS a positive value
     The reward design is based on Reward Design 3:
