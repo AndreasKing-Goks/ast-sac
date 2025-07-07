@@ -1,6 +1,6 @@
 from run.env_args import get_env_args
 from run.env_setup import prepare_multiship_rl_env
-from run.path_collect_setup import get_path_collector
+from test_beds.path_collect_setup import get_path_collector
 
 import os
 import numpy as np

@@ -101,8 +101,8 @@ def experiment(variant, args):
     multi_ship_rl_env, _ = prepare_multiship_rl_env(args)
     
     ## Wrapped RL_Env with to accept normalized action from the policy
-    expl_env = NormalizedBoxEnv(multi_ship_rl_env, reward_scale=0.5)
-    eval_env = NormalizedBoxEnv(multi_ship_rl_env, reward_scale=0.5)
+    expl_env = NormalizedBoxEnv(multi_ship_rl_env, reward_scale=args.reward_scale)
+    eval_env = NormalizedBoxEnv(multi_ship_rl_env, reward_scale=args.reward_scale)
     
     ## Get the observation and action dimension
     obsv_dim = expl_env.observation_space.low.size

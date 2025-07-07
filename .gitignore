@@ -27,6 +27,7 @@ share/python-wheels/
 MANIFEST
 checkpoints/
 run/logs/
+0_paper_and_docs/
 
 
 # PyInstaller
