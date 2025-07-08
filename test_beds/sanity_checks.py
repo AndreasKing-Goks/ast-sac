@@ -651,13 +651,13 @@ if test6:
 # Test manual step() function with action sampled by a policy
 # Also check the reward functions
 test7 = True
-test7 = False
+# test7 = False
 
 if test7:
     
     # Manual scoping angle or random policy sampling
     manual = True
-    manual = False
+    # manual = False
     
     print('Test and plot step up behaviour')
     print('sampling count before reset:', expl_env.wrapped_env.sampling_count)
@@ -666,26 +666,56 @@ if test7:
     
     action, _ = policy.get_action(init_observations)                                        # Get an action
     if manual:
-        action = env.do_normalize_action(np.deg2rad(0))
-    print('First action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
-    print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
+        action = env.do_normalize_action(np.deg2rad(30))
+        print('First action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
+        print('First step reward :', accumulated_reward)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
         if manual:
-            action = env.do_normalize_action(np.deg2rad(0))
+            action = env.do_normalize_action(np.deg2rad(30))
         print('Second action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
+        print('Second step reward :', accumulated_reward)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
         if manual:
-            action = env.do_normalize_action(np.deg2rad(0))
+            action = env.do_normalize_action(np.deg2rad(10))
         print('Third action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step upd
         print('sampling count after third step:', expl_env.wrapped_env.sampling_count)
+        print('Third step reward :', accumulated_reward)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:            
+            action = env.do_normalize_action(np.deg2rad(10))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
+        print('Fourth step reward :', accumulated_reward)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:            
+            action = env.do_normalize_action(np.deg2rad(30))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after fifth step:', expl_env.wrapped_env.sampling_count)
+        print('Fifth step reward :', accumulated_reward)
+        
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:            
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after sixth step:', expl_env.wrapped_env.sampling_count)
+        print('Sixth step reward :', accumulated_reward)
     
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
@@ -693,7 +723,26 @@ if test7:
             action = env.do_normalize_action(np.deg2rad(0))
         print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
-        print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
+        print('sampling count after seventh step:', expl_env.wrapped_env.sampling_count)
+        print('Seventh step reward :', accumulated_reward)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:            
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after eighth step:', expl_env.wrapped_env.sampling_count)
+        print('Eigth step reward :', accumulated_reward)
+    
+    if not combined_done:
+        action, _ = policy.get_action(next_observations)                                        # Get an action
+        if manual:            
+            action = env.do_normalize_action(np.deg2rad(0))
+        print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
+        next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
+        print('sampling count after ninth step:', expl_env.wrapped_env.sampling_count)
+        print('Ninth step reward :', accumulated_reward)
 
     # Get the simulation results for all assets
     ts_results_df = pd.DataFrame().from_dict(expl_env.wrapped_env.test.ship_model.simulation_results)
@@ -722,7 +771,7 @@ if test7:
     
     # Plot 3: Reward plots
     plot_3 = False
-    plot_3 = True
+    # plot_3 = True
     
     # Plot 4: Cumulative rewards plots
     plot_4 = False
@@ -1441,7 +1490,7 @@ if test8:
 
 # Test ast_sac_rollout() alone
 test9=True
-# test9=False
+test9=False
 
 if test9:
     start_time = time.time()

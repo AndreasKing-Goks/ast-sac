@@ -174,7 +174,7 @@ class MultiShipRLEnv(Env):
             Useful for step() return values when is_sampling_failure() is True.
         '''
         self.next_observations = self.initial_states
-        self.accumulated_reward = 0
+        self.accumulated_rewards = 0
         self.accumulated_rewards_list = []
         self.env_info = {
                         'events'            : '',
@@ -594,7 +594,7 @@ class MultiShipRLEnv(Env):
         self.states = next_states 
         
         # Arguments for evaluation function
-        env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
+        env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time, self.accumulated_rewards)
         
         # Get the reward, and the termination flags using the intermediate waypoints
         reward, env_info = get_reward_and_env_info(env_args, 
@@ -677,7 +677,7 @@ class MultiShipRLEnv(Env):
                 # We get the accumulated rewards here based on the previously collected self.accumulated rewards when is_sampling_failure
                 accumulated_rewards, _ = obs_ship_IW_sampling_failure_reward(self.accumulated_rewards, 
                                                                              is_sampling_failure,
-                                                                             termination_multiplier=0.5)
+                                                                             termination_multiplier=2.0)
                 
                 combined_done = True
                 env_info = self.env_info
