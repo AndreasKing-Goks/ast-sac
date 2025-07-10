@@ -362,7 +362,7 @@ class SimulatePolicyEnvSetup():
         
 
 if __name__ == "__main__":
-    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_07_20_17_09_0000--s-0\params.pkl'
+    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_09_18_06_19_0000--s-0\params.pkl'
     max_path_length = np.inf
     gpu_mode = True
     
@@ -381,6 +381,7 @@ if __name__ == "__main__":
         print('STEP', i+1)
         print('Observation      :', path['observations'][i])
         print('Action           :', path['actions'][i])
+        print('Scoping Angle    :', np.rad2deg(setup.env.wrapped_env.do_denormalize_action(path['actions'][i])))
         print('Next observation :', path['next_observations'][i])
         print('Rewards          :', path['rewards'][i])
         print('Terminal         :', path['terminals'][i])

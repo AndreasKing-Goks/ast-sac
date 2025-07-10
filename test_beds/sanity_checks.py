@@ -666,7 +666,7 @@ if test7:
     
     action, _ = policy.get_action(init_observations)                                        # Get an action
     if manual:
-        action = env.do_normalize_action(np.deg2rad(30))
+        action = env.do_normalize_action(np.deg2rad(20))
         print('First action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after first step:', expl_env.wrapped_env.sampling_count)  
@@ -675,7 +675,7 @@ if test7:
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
         if manual:
-            action = env.do_normalize_action(np.deg2rad(30))
+            action = env.do_normalize_action(np.deg2rad(0))
         print('Second action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after second step:', expl_env.wrapped_env.sampling_count)
@@ -693,7 +693,7 @@ if test7:
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
         if manual:            
-            action = env.do_normalize_action(np.deg2rad(10))
+            action = env.do_normalize_action(np.deg2rad(0))
         print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after fourth step:', expl_env.wrapped_env.sampling_count)
@@ -702,7 +702,7 @@ if test7:
     if not combined_done:
         action, _ = policy.get_action(next_observations)                                        # Get an action
         if manual:            
-            action = env.do_normalize_action(np.deg2rad(30))
+            action = env.do_normalize_action(np.deg2rad(-30))
         print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
         next_observations, accumulated_reward, combined_done, env_info = expl_env.step(action)  # Step up
         print('sampling count after fifth step:', expl_env.wrapped_env.sampling_count)

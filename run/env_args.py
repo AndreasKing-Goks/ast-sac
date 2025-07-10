@@ -8,7 +8,7 @@ def get_env_args():
     parser.add_argument('--max_sampling_frequency', type=int, default=9, metavar='N_SAMPLE',
                         help='ENV: maximum amount of action sampling per episode (default: 9)')
     parser.add_argument('--time_step', type=int, default=4, metavar='TIMESTEP',
-                        help='ENV: time step size in second for ship transit simulator (default: 2)')
+                        help='ENV: time step size in second for ship transit simulator (default: 4)')
     parser.add_argument('--radius_of_acceptance', type=int, default=300, metavar='ROA',
                         help='ENV: radius of acceptance for LOS algorithm (default: 300)')
     parser.add_argument('--lookahead_distance', type=int, default=1000, metavar='LD',

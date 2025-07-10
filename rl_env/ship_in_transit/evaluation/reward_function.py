@@ -401,7 +401,7 @@ def obs_ship_grounding_reward(obs_to_ground_distance, current_step_accumulated_r
     
     # Compute reward (negative for obstacle ship)
     if obs_to_ground_distance <= clipping_distance:
-        reward = -base_reward(obs_to_ground_distance)
+        reward = -base_reward(obs_to_ground_distance) * 50
     elif obs_to_ground_distance > clipping_distance:
         reward = 0
     
