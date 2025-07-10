@@ -90,6 +90,9 @@ def parse_cli_args():
     parser.add_argument('--use_automatic_entropy_tuning', type=bool, default=True, metavar='AUTO_ENTROPY',
                         help='SAC_T: adaptive entropy coefficient tuning if True (default: True)')
     
+    ## Parse args
+    args = parser.parse_args()
+    
     return args
 
 
