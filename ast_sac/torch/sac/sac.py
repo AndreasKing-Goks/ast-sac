@@ -150,7 +150,7 @@ class SACTrainer(TorchTrainer, LossFunction):
         self,
         batch,
         skip_statistics=False,
-        debug=False
+        debug=False,
     ) -> Tuple[SACLosses, LossStatistics]:
         rewards = batch['rewards']
         terminals = batch['terminals']

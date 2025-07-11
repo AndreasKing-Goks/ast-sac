@@ -99,8 +99,8 @@ class MultiShipRLEnv(Env):
         else:
             # Scoping Angle between -30 degree to 30 degree, but in radians
             self.action_space = Box(
-                low = np.array([-np.deg2rad(20)], dtype=np.float32),
-                high = np.array([np.deg2rad(20)], dtype=np.float32),
+                low = np.array([-np.deg2rad(30)], dtype=np.float32),
+                high = np.array([np.deg2rad(30)], dtype=np.float32),
             dtype=np.float32)
         
         # Define initial state

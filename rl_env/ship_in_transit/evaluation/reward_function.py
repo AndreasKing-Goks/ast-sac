@@ -58,7 +58,7 @@ class RewardTracker:
         
 def get_reward_and_env_info(env_args,  
                             reward_tracker:RewardTracker,
-                            normalize_reward=False, 
+                            normalize_reward=True, 
                             use_relative_bearing = True):
     '''
     env_args contains:
@@ -401,7 +401,7 @@ def obs_ship_grounding_reward(obs_to_ground_distance, current_step_accumulated_r
     
     # Compute reward (negative for obstacle ship)
     if obs_to_ground_distance <= clipping_distance:
-        reward = -base_reward(obs_to_ground_distance) * 50
+        reward = -base_reward(obs_to_ground_distance)
     elif obs_to_ground_distance > clipping_distance:
         reward = 0
     
