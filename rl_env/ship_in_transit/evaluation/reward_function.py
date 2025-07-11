@@ -122,38 +122,36 @@ def get_reward_and_env_info(env_args,
                               is_ship_navigation_failure(obs_e_ct, e_tol=obs_e_ct_threshold)])
     
     # Compute ships collision reward. Get the termination status
-    r_ship_collision, termination_1 = ships_collision_reward(test_to_obs_distance, current_step_accumulated_rewards, encounter_type, is_collision)
+    r_ship_collision, termination_1 = ships_collision_reward(test_to_obs_distance, encounter_type, is_collision)
     
     # Compute test ship grounding reward. Get the termination status
-    r_test_ship_grounding, termination_2 = test_ship_grounding_reward(test_to_ground_distance, current_step_accumulated_rewards, is_test_grounding)
+    r_test_ship_grounding, termination_2 = test_ship_grounding_reward(test_to_ground_distance, is_test_grounding)
     
     # Compute test ship navigation failure reward. get the termination status
     r_test_ship_nav_failure, termination_3 = test_ship_nav_failure_reward(test_e_ct,
-                                                                          current_step_accumulated_rewards, 
                                                                           is_test_nav_failure,
                                                                           e_ct_threshold=test_e_ct_threshold)
     
     # Compute obstacle ship grounding reward. Get the termination status
-    r_obs_ship_grounding, termination_4 = obs_ship_grounding_reward(obs_to_ground_distance, current_step_accumulated_rewards, is_obs_grounding)
+    r_obs_ship_grounding, termination_4 = obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding)
     
     # Compute obstacle ship navigation failure reward. Get the termination status
     r_obs_ship_nav_failure, termination_5 = obs_ship_nav_failure_reward(obs_e_ct, 
-                                                                        current_step_accumulated_rewards,
                                                                         is_obs_nav_failure, 
                                                                         e_ct_threshold=obs_e_ct_threshold)
     
     # Evaluate all the non-terminal reward function first
-    current_acc_reward_list = np.array([r_ship_collision, r_test_ship_grounding, 
-                                        r_test_ship_nav_failure, r_obs_ship_grounding, 
-                                        r_obs_ship_nav_failure])
+    current_simu_step_accumulated_reward_list = np.array([r_ship_collision, r_test_ship_grounding, 
+                                                          r_test_ship_nav_failure, r_obs_ship_grounding, 
+                                                          r_obs_ship_nav_failure])
     if normalize_reward:
-        normalizing_factor = len(current_acc_reward_list)
+        normalizing_factor = len(current_simu_step_accumulated_reward_list)
     else:
         normalizing_factor = 1 # Not normalized
-    current_acc_reward = np.sum(current_acc_reward_list) / normalizing_factor
+    current_simu_step_accumulated_reward_list = np.sum(current_simu_step_accumulated_reward_list) / normalizing_factor
     
-    # GET THE TOTAL REWARD FOR ONE STEP
-    r_total = current_acc_reward
+    # GET THE TOTAL REWARD FOR ONE SIMU STEP
+    r_total = current_simu_step_accumulated_reward_list
     
     ## GET THE TERMINATION AND STOP OBSTACLE FLAG FOR NON-REWARD EVALUATION FUNCTION
     # Compute the necessary argument
@@ -169,6 +167,15 @@ def get_reward_and_env_info(env_args,
     termination_8 = is_reaches_endpoint(obs_route_end, obs_pos)
     termination_9 = is_pos_outside_horizon(map_obj, obs_pos, obs_ship_length)
     termination_10 = is_within_simu_time_limit(test) # Following ship under test
+    
+    # Final Reward if terminal condition is met
+    r_total = get_reward_due_to_ships_termination(r_total,
+                                                  current_step_accumulated_rewards,
+                                                  is_collision,
+                                                  is_test_grounding,
+                                                  is_test_nav_failure,
+                                                  is_obs_grounding,
+                                                  is_obs_nav_failure)
     
     # Track the reward evolution
     reward_log.update(r_ship_collision / normalizing_factor,
@@ -262,8 +269,44 @@ def get_reward_and_env_info(env_args,
     
     return r_total, env_info
     
+def get_reward_due_to_ships_termination(r_total,
+                                        current_step_accumulated_rewards,
+                                        is_collision,
+                                        is_test_grounding,
+                                        is_test_nav_failure,
+                                        is_obs_grounding,
+                                        is_obs_nav_failure,
+                                        is_collision_reward_multiplier=10.0,
+                                        is_test_grounding_reward_multiplier=5.0,
+                                        is_test_nav_failure_reward_multiplier=5.0,
+                                        is_obs_grounding_reward_multiplier=-2.5,
+                                        is_obs_nav_failure_reward_multiplier=-2.5):
+    termination_conditions = [is_collision,
+                              is_test_grounding,
+                              is_test_nav_failure,
+                              is_obs_grounding,
+                              is_obs_nav_failure]
+    termination_multipliers = [is_collision_reward_multiplier,
+                               is_test_grounding_reward_multiplier,
+                               is_test_nav_failure_reward_multiplier,
+                               is_obs_grounding_reward_multiplier,
+                               is_obs_nav_failure_reward_multiplier]
+    
+    if any(termination_conditions):
+        reward = r_total + current_step_accumulated_rewards
+        r_total = 0
+        for condition, multiplier in zip(termination_conditions, termination_multipliers):
+            if current_step_accumulated_rewards > 0 and condition:
+                r_total += reward * multiplier
+            elif current_step_accumulated_rewards < 0 and condition:
+                r_total += reward * -multiplier
+        
+    else:
+        r_total = r_total
+    
+    return r_total
 
-def ships_collision_reward(test_to_obs_distance, current_step_accumulated_rewards, encounter_type, is_collision, termination_multiplier=10.0):
+def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision):
     '''
     * ships_distance is ALWAYS a positive value
     The reward design consists of two evaluation functions:
@@ -298,15 +341,15 @@ def ships_collision_reward(test_to_obs_distance, current_step_accumulated_reward
             
     # If is_collision, compute terminal reward
     if is_collision:
-        if current_step_accumulated_rewards > 0:
-            reward = current_step_accumulated_rewards * termination_multiplier
-        elif current_step_accumulated_rewards < 0:
-            reward = -current_step_accumulated_rewards * termination_multiplier
+        # if current_step_accumulated_rewards > 0:
+        #     reward = current_step_accumulated_rewards * termination_multiplier
+        # elif current_step_accumulated_rewards < 0:
+        #     reward = -current_step_accumulated_rewards * termination_multiplier
         termination = True
             
     return reward, termination
 
-def test_ship_grounding_reward(test_to_ground_distance, current_step_accumulated_rewards, is_test_grounding, termination_multiplier=5.0):
+def test_ship_grounding_reward(test_to_ground_distance, is_test_grounding):
     '''
     * ship_ground_distance is ALWAYS a positive value
     The reward design is based on Reward Design 4:
@@ -337,15 +380,15 @@ def test_ship_grounding_reward(test_to_ground_distance, current_step_accumulated
     
     # If is_grounding, compute terminal reward
     if is_test_grounding:
-        if current_step_accumulated_rewards > 0:
-            reward = current_step_accumulated_rewards * termination_multiplier
-        elif current_step_accumulated_rewards < 0:
-            reward = -current_step_accumulated_rewards * termination_multiplier
+        # if current_step_accumulated_rewards > 0:
+        #     reward = current_step_accumulated_rewards * termination_multiplier
+        # elif current_step_accumulated_rewards < 0:
+        #     reward = -current_step_accumulated_rewards * termination_multiplier
         termination = True
 
     return reward, termination
 
-def test_ship_nav_failure_reward(test_e_ct, current_step_accumulated_rewards, is_test_nav_failure, e_ct_threshold = 3000, termination_multiplier=5.0):
+def test_ship_nav_failure_reward(test_e_ct, is_test_nav_failure, e_ct_threshold = 3000):
     '''
     * Cross track error is ALWAYS a positive value
     The reward design is based on Reward Design 3:
@@ -368,15 +411,15 @@ def test_ship_nav_failure_reward(test_e_ct, current_step_accumulated_rewards, is
     
     # If is_nav_failure
     if is_test_nav_failure:
-        if current_step_accumulated_rewards > 0:
-            reward = current_step_accumulated_rewards * termination_multiplier
-        elif current_step_accumulated_rewards < 0:
-            reward = -current_step_accumulated_rewards * termination_multiplier
+        # if current_step_accumulated_rewards > 0:
+        #     reward = current_step_accumulated_rewards * termination_multiplier
+        # elif current_step_accumulated_rewards < 0:
+        #     reward = -current_step_accumulated_rewards * termination_multiplier
         termination = True
     
     return reward, termination
 
-def obs_ship_grounding_reward(obs_to_ground_distance, current_step_accumulated_rewards, is_obs_grounding, termination_multiplier=2.5):
+def obs_ship_grounding_reward(obs_to_ground_distance, is_obs_grounding):
     '''
     * ship_ground_distance is ALWAYS a positive value
     The reward design is based on Reward Design 4:
@@ -407,15 +450,15 @@ def obs_ship_grounding_reward(obs_to_ground_distance, current_step_accumulated_r
     
     # If is_grounding, compute terminal reward
     if is_obs_grounding:
-        if current_step_accumulated_rewards > 0:
-            reward = -current_step_accumulated_rewards * termination_multiplier
-        elif current_step_accumulated_rewards < 0:
-            reward = current_step_accumulated_rewards * termination_multiplier
+        # if current_step_accumulated_rewards > 0:
+        #     reward = -current_step_accumulated_rewards * termination_multiplier
+        # elif current_step_accumulated_rewards < 0:
+        #     reward = current_step_accumulated_rewards * termination_multiplier
         termination = True
 
     return reward, termination
 
-def obs_ship_nav_failure_reward(obs_e_ct, current_step_accumulated_rewards, is_obs_nav_failure, e_ct_threshold = 500, termination_multiplier=2.5):
+def obs_ship_nav_failure_reward(obs_e_ct, is_obs_nav_failure, e_ct_threshold = 500):
     '''
     * Cross track error is ALWAYS a positive value
     The reward design is based on Reward Design 3:
@@ -438,15 +481,15 @@ def obs_ship_nav_failure_reward(obs_e_ct, current_step_accumulated_rewards, is_o
     
     # If is_nav_failure
     if is_obs_nav_failure:
-        if current_step_accumulated_rewards > 0:
-            reward = -current_step_accumulated_rewards * termination_multiplier
-        elif current_step_accumulated_rewards < 0:
-            reward = current_step_accumulated_rewards * termination_multiplier
+        # if current_step_accumulated_rewards > 0:
+        #     reward = -current_step_accumulated_rewards * termination_multiplier
+        # elif current_step_accumulated_rewards < 0:
+        #     reward = current_step_accumulated_rewards * termination_multiplier
         termination = True
     
     return reward, termination
 
-def obs_ship_IW_sampling_failure_reward(current_step_accumulated_rewards, is_sampling_failure, termination_multiplier=5):
+def obs_ship_IW_sampling_failure_reward(current_step_accumulated_rewards, is_sampling_failure, termination_multiplier=5.0):
     '''
     Compute reward when obstacle ship sample the intermediate waypoint in the terrain.
     
