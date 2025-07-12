@@ -182,6 +182,7 @@ class SACTrainer(TorchTrainer, LossFunction):
             print("log_pi:", torch.isnan(log_pi).any(), torch.isinf(log_pi).any())
         # ===============================
         
+        # Q values given observation and new_obs_actions
         q_new_actions = torch.min(
             self.qf1(obs, new_obs_actions),
             self.qf2(obs, new_obs_actions),
@@ -193,10 +194,17 @@ class SACTrainer(TorchTrainer, LossFunction):
         # ===============================
         
         policy_loss = (alpha*log_pi - q_new_actions).mean()
+        
+        ## IMPLEMENT ACTION REGULARIZATION IN POLICY LOSS
+        # action_reg_coeff -> 0.001, 0.01, 0.1
+        action_reg_coeff = 0.01
+        action_reg = (new_obs_actions ** 2).mean()
+        policy_loss += action_reg_coeff * action_reg
 
         """
         QF Loss
         """
+        # Q values given observation and actions from batches
         q1_pred = self.qf1(obs, actions)
         q2_pred = self.qf2(obs, actions)
         # ========= DEBUG CHECK =========
@@ -221,6 +229,12 @@ class SACTrainer(TorchTrainer, LossFunction):
         # ===============================
         
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
+        
+        ## IMPLEMENT Q_TARGET CLIPPING
+        # clip_val -> 5.0 10.0 20.0
+        clip_val = 20.0
+        q_target = torch.clamp(q_target, min=-clip_val, max=clip_val)
+        
         # ========= DEBUG CHECK =========
         if debug:
             print("rewards", rewards)
