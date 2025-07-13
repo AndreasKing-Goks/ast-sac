@@ -281,6 +281,13 @@ def get_reward_due_to_ships_termination(r_total,
                                         is_test_nav_failure_reward_multiplier=5.0,
                                         is_obs_grounding_reward_multiplier=-2.5,
                                         is_obs_nav_failure_reward_multiplier=-2.5):
+    '''
+    The function is created to get the total reward due to the ship termination 
+    (both ship under test and  obstacle ship). This is required because we need 
+    a special treatment to process the accumulated reward between two action sampling
+    so that the reward valuecan correspond with the type of termination both ship's
+    experiencing.
+    '''
     termination_conditions = [is_collision,
                               is_test_grounding,
                               is_test_nav_failure,

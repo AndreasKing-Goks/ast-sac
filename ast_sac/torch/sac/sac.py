@@ -42,6 +42,10 @@ class SACTrainer(TorchTrainer, LossFunction):
 
             use_automatic_entropy_tuning=True,
             target_entropy=None,
+            
+            action_reg_coeff =None,
+            clip_val=np.inf
+            
     ):
         super().__init__()
         self.env = env
@@ -91,6 +95,9 @@ class SACTrainer(TorchTrainer, LossFunction):
         self._n_train_steps_total = 0
         self._need_to_update_eval_statistics = True
         self.eval_statistics = OrderedDict()
+        
+        self.action_reg_coeff = action_reg_coeff
+        self.clip_val = clip_val
 
     def train_from_torch(self, batch):
         gt.blank_stamp()
@@ -196,10 +203,10 @@ class SACTrainer(TorchTrainer, LossFunction):
         policy_loss = (alpha*log_pi - q_new_actions).mean()
         
         ## IMPLEMENT ACTION REGULARIZATION IN POLICY LOSS
-        # action_reg_coeff -> 0.001, 0.01, 0.1
-        action_reg_coeff = 0.01
-        action_reg = (new_obs_actions ** 2).mean()
-        policy_loss += action_reg_coeff * action_reg
+        # If do action regularization
+        if self.action_reg_coeff:
+            action_reg = (new_obs_actions ** 2).mean()
+            policy_loss += self.action_reg_coeff * action_reg
 
         """
         QF Loss
@@ -231,9 +238,8 @@ class SACTrainer(TorchTrainer, LossFunction):
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
         
         ## IMPLEMENT Q_TARGET CLIPPING
-        # clip_val -> 5.0 10.0 20.0
-        clip_val = 20.0
-        q_target = torch.clamp(q_target, min=-clip_val, max=clip_val)
+        # Default is infinite
+        q_target = torch.clamp(q_target, min=-self.clip_val, max=self.clip_val)
         
         # ========= DEBUG CHECK =========
         if debug:
