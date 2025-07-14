@@ -61,13 +61,13 @@ def parse_cli_args():
     #           - training step to get transition from replay buffer, compute losses, then backpropagate
     #           - a single batch size use is counted as a single training step
     # epoch  : a full training cycle of learning + evaluation + logging
-    parser.add_argument('--num_epochs', type=int, default=1000, metavar='N_EPOCHS',
+    parser.add_argument('--num_epochs', type=int, default=500, metavar='N_EPOCHS',
                         help='SAC_A: number of full training iterations (default: 750)')
     parser.add_argument('--num_eval_steps_per_epoch', type=int, default=180, metavar='N_EVAL_STEPS',
                         help='SAC_A: number of evaluation steps at the end of each epoch (default: 180)') 
-    parser.add_argument('--num_trains_per_train_loop', type=int, default=360, metavar='N_TRAINS',
+    parser.add_argument('--num_trains_per_train_loop', type=int, default=240, metavar='N_TRAINS',
                         help='SAC_A: number of gradient updates to run per training loop (default: 360)')
-    parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=512, metavar='N_EXPL_STEPS',
+    parser.add_argument('--num_expl_steps_per_train_loop', type=int, default=256, metavar='N_EXPL_STEPS',
                         help='SAC_A: number of exploration steps during training (default: 512)')  
     parser.add_argument('--min_num_steps_before_training', type=int, default=8192, metavar='MIN_N_STEPS',
                         help='SAC_A: delayed start — buffer pre-filled with random actions \
@@ -90,11 +90,11 @@ def parse_cli_args():
                         help='SAC_T: scale factor for rewards (default: 1)')
     parser.add_argument('--use_automatic_entropy_tuning', type=bool, default=True, metavar='AUTO_ENTROPY',
                         help='SAC_T: adaptive entropy coefficient tuning if True (default: True)')
-    parser.add_argument('--action_reg_coeff', type=float, default=None, metavar='ACT_REG_COEFF',
+    parser.add_argument('--action_reg_coeff', type=float, default=0.01, metavar='ACT_REG_COEFF',
                         help='if not None, do action regularization to penalizes high-magnitude actions to \
                               avoid action saturation. if input value (float), this becomes the regularization\
                               coefficient (default=None)') # Try 0.1, 0.01, 0.001
-    parser.add_argument('--clip_val', type=float, default=np.inf, metavar='CLIP_VAL',
+    parser.add_argument('--clip_val', type=float, default=100, metavar='CLIP_VAL',
                         help='Input value is used to clip the Q-value with positive and negative bound \
                               to prevent extreme value growth that might yield to learning instability \
                               (default: np.inf)')

@@ -106,7 +106,7 @@ if plot_1:
 
 # Plot the Q prediction and targets
 plot_2 = True
-plot_2 = False
+# plot_2 = False
 if plot_2:
     plotter.plot_columns(['trainer/Q1 Predictions Mean', 'trainer/Q1 Predictions Min', 'trainer/Q1 Predictions Max'])
     plotter.plot_columns(['trainer/Q2 Predictions Mean', 'trainer/Q2 Predictions Min', 'trainer/Q2 Predictions Max'])
