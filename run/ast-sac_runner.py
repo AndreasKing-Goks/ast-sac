@@ -93,7 +93,7 @@ def parse_cli_args():
     parser.add_argument('--action_reg_coeff', type=float, default=None, metavar='ACT_REG_COEFF',
                         help='if not None, do action regularization to penalizes high-magnitude actions to \
                               avoid action saturation. if input value (float), this becomes the regularization\
-                              coefficient (default=None)')
+                              coefficient (default=None)') # Try 0.1, 0.01, 0.001
     parser.add_argument('--clip_val', type=float, default=np.inf, metavar='CLIP_VAL',
                         help='Input value is used to clip the Q-value with positive and negative bound \
                               to prevent extreme value growth that might yield to learning instability \

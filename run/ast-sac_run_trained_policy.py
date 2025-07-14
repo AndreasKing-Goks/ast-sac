@@ -68,7 +68,75 @@ class SimulatePolicyEnvSetup():
                  plot_1=True,
                  plot_2=True,
                  plot_3=True,
-                 plot_4=True):
+                 plot_4=True,
+                 plot_5=True):
+        
+        # Plot 5: Minimalistic 1x6 layout for paper figure
+        if plot_5:
+            fig_5, axes = plt.subplots(nrows=6, ncols=1, figsize=(3.2, 6), sharex=True, sharey=True)
+            plt.figure(fig_5.number)
+
+            center_plot_window()
+
+            # Define labels and data series
+            labels = [
+                'Test Ship: Grounding',
+                'Test Ship: Nav Failure',
+                'Obstacle Ship: Grounding',
+                'Obstacle Ship: Nav Failure',
+                'Ship Collision',
+                'Total Reward'
+            ]
+            reward_series = [
+                self.env.wrapped_env.reward_tracker.test_ship_grounding,
+                self.env.wrapped_env.reward_tracker.test_ship_nav_failure,
+                self.env.wrapped_env.reward_tracker.obs_ship_grounding,
+                self.env.wrapped_env.reward_tracker.obs_ship_nav_failure,
+                self.env.wrapped_env.reward_tracker.ship_collision,
+                self.env.wrapped_env.reward_tracker.total,
+            ]
+
+            # Convert timestep indices to actual time (in seconds)
+            timestep_duration = self.obs.ship_model.int.dt  # seconds per timestep
+
+            for i, (ax, series, label) in enumerate(zip(axes, reward_series, labels)):
+                cumulative_reward = np.cumsum(series)
+                time_axis = np.arange(len(series)) * timestep_duration
+
+                # Plot cumulative reward over time
+                ax.plot(time_axis, cumulative_reward, linewidth=1.2)
+
+                # Vertical dashed lines at waypoint sampling times (in seconds)
+                for j, ts in enumerate(self.waypoint_sampling_times):
+                    if j == 0:
+                        ax.axvline(x=ts, color='red', linestyle='--', linewidth=0.8,
+                                alpha=0.7, label='Sampling Timestamp')
+                    else:
+                        ax.axvline(x=ts, color='red', linestyle='--', linewidth=0.8, alpha=0.7)
+
+                ax.set_title(label, fontsize=8)
+                ax.grid(color='0.85', linestyle='--', linewidth=0.3)
+                ax.tick_params(axis='both', labelsize=7)
+                ax.set_xlim(left=0)
+
+                # # Optional: show legend only on first subplot
+                # if i == 0:
+                #     ax.legend(
+                #         loc='upper left',
+                #         fontsize=7,
+                #         frameon=True,
+                #         framealpha=0.6,
+                #         edgecolor='gray',
+                #         facecolor='white'
+                #     )
+
+            # Shared axis labels
+            fig_5.text(0.5, 0.04, 'Time (s)', ha='center', fontsize=9)
+            fig_5.text(0.03, 0.5, 'Cumulative Reward', va='center', rotation='vertical', fontsize=9)
+
+            plt.tight_layout(rect=[0.07, 0.05, 1, 0.98])
+
+
         
         # Create a No.4 2x4 grid for accumulated reward subplots
         if plot_4:
@@ -349,7 +417,7 @@ class SimulatePolicyEnvSetup():
                                                 is_collision_list)
             
             ani_ID = 1
-            ani_dir = os.path.join('animation', 'comparisons')
+            ani_dir = os.path.join('animation', 'just_checking')
             filename  = "trajectory.mp4"
             video_path = os.path.join(ani_dir, filename)
             fps = 480
@@ -362,7 +430,7 @@ class SimulatePolicyEnvSetup():
         
 
 if __name__ == "__main__":
-    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_11_17_31_58_0000--s-0\params.pkl'
+    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\JUST_CHECKING_2\params.pkl'
     max_path_length = np.inf
     gpu_mode = True
     
@@ -371,10 +439,11 @@ if __name__ == "__main__":
                                    gpu_mode)
 
     path = setup.simulate_policy()
-    # setup.do_plot(plot_1=True,
-    #               plot_2=True,
-    #               plot_3=True,
-    #               plot_4=True)
+    setup.do_plot(plot_1=False,
+                  plot_2=False,
+                  plot_3=False,
+                  plot_4=False,
+                  plot_5=True)
     setup.animate()
     
     for i in range(len(path['actions'])):

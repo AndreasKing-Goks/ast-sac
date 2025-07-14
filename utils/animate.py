@@ -301,7 +301,7 @@ class RLShipTrajectoryAnimator:
         self.ax.set_ylim(0, 10000)
         self.ax.set_aspect('equal')
         self.ax.grid(color='0.8', linestyle='-', linewidth=0.5)
-        self.ax.set_title('Animated Ship Trajectory')
+        self.ax.set_title("Top View of Ships' Trajectory")
         self.ax.set_xlabel('East position (m)')
         self.ax.set_ylabel('North position (m)')
 

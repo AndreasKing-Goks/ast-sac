@@ -36,7 +36,7 @@ designs = [
     RewardDesign1(target=50, offset_param=250),
     RewardDesign2(target=50, offset_param1=250, offset_param2=50),
     RewardDesign3(target=3000, offset_param=1250000),
-    RewardDesign4(target=0, offset_param=20000000),
+    RewardDesign4(target=0, offset_param=200000002),
     RewardDesign5(target_bound_low=40, target_bound_high=60, offset_param=100),
     RewardDesign6(target1=30, target2=70, second_peak=0.8, flat_zone=0.5,
                   offset_param1=100, offset_param2=50, offset_param3=50, offset_param4=100)

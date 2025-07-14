@@ -329,7 +329,7 @@ def ships_collision_reward(test_to_obs_distance, encounter_type, is_collision):
     '''
     # Initiate reward designs, termination status, trigger distance, and initial reward
     # encounter_reward = RewardDesign4(target=0, offset_param=1500000)
-    encounter_reward = RewardDesign4(target=0, offset_param=200000002)
+    encounter_reward = RewardDesign4(target=0, offset_param=200000000) # need to investigate between 2e8 vs 2e7
     overtake_reward  = RewardDesign4(target=0, offset_param=5000)
     termination = False
     trigger_distance = 10000
