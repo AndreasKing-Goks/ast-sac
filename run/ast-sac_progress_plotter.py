@@ -91,7 +91,7 @@ Available columns:
 '''
 
 # Get the progress.csv path
-csv_path = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_12_23_55_52_0000--s-0\progress.csv'
+csv_path = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_14_12_03_26_0000--s-0\progress.csv'
 
 # Instantiate the plotter
 plotter = ProgressPlotter(csv_path)
@@ -99,14 +99,14 @@ plotter = ProgressPlotter(csv_path)
 ## Learning Stability & Divergence Detection
 # Plot the Q-function Losses
 plot_1 = True
-plot_1 = False
+# plot_1 = False
 if plot_1:
     plotter.plot_column('trainer/QF1 Loss')
     plotter.plot_column('trainer/QF2 Loss')
 
 # Plot the Q prediction and targets
 plot_2 = True
-plot_2 = False
+# plot_2 = False
 if plot_2:
     plotter.plot_columns(['trainer/Q1 Predictions Mean', 'trainer/Q1 Predictions Min', 'trainer/Q1 Predictions Max'])
     plotter.plot_columns(['trainer/Q2 Predictions Mean', 'trainer/Q2 Predictions Min', 'trainer/Q2 Predictions Max'])
@@ -114,7 +114,7 @@ if plot_2:
 
 # Policy Loss and Entropy
 plot_3 = True
-plot_3 = False
+# plot_3 = False
 if plot_3:
     plotter.plot_column('trainer/Policy Loss')
     plotter.plot_columns(['trainer/Log Pis Mean', 'trainer/Log Pis Min', 'trainer/Log Pis Max'])
@@ -124,14 +124,14 @@ if plot_3:
 ## Policy Behavior
 # Policy Outputs Stats
 plot_4 = True
-plot_4 = False
+# plot_4 = False
 if plot_4:
     plotter.plot_columns(['trainer/policy/mean Mean', 'trainer/policy/mean Std', 'trainer/policy/mean Min', 'trainer/policy/mean Max'])
     plotter.plot_columns(['trainer/policy/normal/std Mean', 'trainer/policy/normal/log_std Mean'])
 
 # Exploration and Evaluation Actions
 plot_5 = True
-plot_5 = False
+# plot_5 = False
 if plot_5:
     plotter.plot_columns(['expl/Actions Mean', 'expl/Actions Std', 'expl/Actions Min', 'expl/Actions Max'])
     plotter.plot_columns(['eval/Actions Mean', 'eval/Actions Std', 'eval/Actions Min', 'eval/Actions Max'])
@@ -139,21 +139,21 @@ if plot_5:
 ## Reward and Return Evaluation
 # Reward and Returns (Exploration)
 plot_6 = True
-plot_6 = False
+# plot_6 = False
 if plot_6:
     plotter.plot_columns(['expl/Rewards Mean', 'expl/Rewards Max', 'expl/Rewards Min'])
     plotter.plot_columns(['expl/Returns Mean', 'expl/Returns Max', 'expl/Returns Min'])
 
 # Rewards and Returns (Evaluation)
 plot_7 = True
-plot_7 = False
+# plot_7 = False
 if plot_7:
     plotter.plot_columns(['eval/Rewards Mean', 'eval/Rewards Max', 'eval/Rewards Min'])
     plotter.plot_column('eval/Returns Mean')
 
 ### Time Profiling
 plot_8 = True
-plot_8 = False
+# plot_8 = False
 if plot_8:
     plotter.plot_column('trainer/Policy Loss')
     plotter.plot_column('time/sac training (s)')
