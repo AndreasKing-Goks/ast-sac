@@ -101,14 +101,38 @@ Two navigation modes:
 - Single-engine configuration using only the Main Engine in PTO mode
 - Complex hybrid-electric propulsion control
 
-For usage and integration examples, refer to the provided scripts and documentation in `simu_standalone/`
-
 ---
 
-## Setting up the Ship in Transit Simulator
+## Setting up the Ship in Transit Simulator with RL-learning agent and multi-ship configurations
 
-Text
+For usage and integration examples, refer to the provided scripts and documentation in `simu_standalone/multi_ship_rl_env_setup.py`
 
+Generally, building this simulator is done by doing these steps:
+1. Prepare configurations objects:
+  - Ship configurations built from `ShipConfiguration()`
+  - Machinery configurations (including machinery modes) built from `MachinerySystemConfiguration()`
+  - Simulation environment configuration built from `EnvironmentConfiguration()`
+  - Simulator configuration built from `SimulationConfiguration()`
+2. Using this configuration objects, we can then built a ship asset for stress testing purpose using `ShipModelAST()`.
+3. The ship model needs throttle controller and heading controller for it to carry an autonomous mission. A simple engine throttle controller with fixed desired speed can be set up using `EngineThrottleFromSpeedSetPoint()`. A heading controller using LOS Guidance can also be set using `HeadingByRouteController()`. For this we need the mission waypoints inside a file named `_ship_route.txt` beforehand.
+4. We could also set up a ship model in which it can "choose" a new intermediate waypoint during the simulation. This can be done using `HeadingBySampledRouteController()`. This control is still based on the `HeadingByRouteController()`. The main difference is that the we only need two initial waypoints, start and end point, in the `_ship_route.txt`.
+5. We can run multiple ship models simultaneously. In order to do that, we know introduce a new term `ShipAssets()`, where it collects the corresponding controllers and other parameters associated to it. Typicially in stress testing settings, we have a ship asset which undergoes a stress testing, namely `test` ship, and a ship asset that acts as a disturbance to affect the ship under test, namely `obs`. All ship assets is collected inside a list, then used to create the RL environment for the adaptive stress testing.
+6. Typically, the first entry in the ship asset list are the `test` ship, and the rest is `obs` ship/s. 
+> Multiple obstacle ships implementation is not finished yet!
+
+In `multi_ship_rl_env_setup.py`, we can find 9 tests in total for a better understanding (also used as sanity checks) for the stress-testing algorithm. Below are the descriptions:
+
+| Test No. | Description |
+|----------|-------------|
+| `test 1` | Test the usage of `normalized_box_env()` function |
+| `test 2` | Test a direct action sampling from an RL environment |
+| `test 3` | Test the behaviour of `get_intermediate_waypoints()` function |
+| `test 4` | Test an action sampling from the policy |
+| `test 5` | Test the use of policy's action sampling to step up the simulator |
+| `test 6` | Test for simulaion step up using one action sampled from policy |
+| `test 7` | Test the simulation step up using policy's action sampling or direct action manipulation |
+| `test 8` | Test the step - reset - step process of the simulation |
+| `test 9` | Test the rollout function for adaptive stress testing purpose |
 ---
 
 ## Training the AST-SAC Agent
