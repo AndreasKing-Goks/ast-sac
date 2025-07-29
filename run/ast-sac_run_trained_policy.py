@@ -430,7 +430,7 @@ class SimulatePolicyEnvSetup():
         
 
 if __name__ == "__main__":
-    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_14_12_03_26_0000--s-0\params.pkl'
+    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_15_22_46_15_0000--s-0\params.pkl'
     max_path_length = np.inf
     gpu_mode = True
     
