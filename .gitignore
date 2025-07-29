@@ -28,6 +28,7 @@ MANIFEST
 checkpoints/
 run/logs/
 0_paper_and_docs/
+test_beds/
 
 
 # PyInstaller
