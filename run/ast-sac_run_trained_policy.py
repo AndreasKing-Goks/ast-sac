@@ -417,20 +417,21 @@ class SimulatePolicyEnvSetup():
                                                 is_collision_list)
             
             ani_ID = 1
-            ani_dir = os.path.join('animation', 'just_checking')
-            filename  = "trajectory.mp4"
+            ani_dir = os.path.join('animation', 'for_slides')
+            filename  = "no_collav1.mp4"
             video_path = os.path.join(ani_dir, filename)
-            fps = 480
+            print(video_path)
+            fps = 120
             
             # Create the output directory if it doesn't exist
             os.makedirs(ani_dir, exist_ok=True)
             
-            # animator.save(video_path, fps)
-            animator.run(fps)
+            animator.save(video_path, fps)
+            # animator.run(fps)
         
 
 if __name__ == "__main__":
-    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_07_15_22_46_15_0000--s-0\params.pkl'
+    trained = r'D:\OneDrive - NTNU\PhD\PhD_Projects\ast-sac\run\logs\ast-sac-maritime-logs\ast-sac_maritime_logs_2025_08_05_15_32_29_0000--s-0\params.pkl'
     max_path_length = np.inf
     gpu_mode = True
     
@@ -443,7 +444,7 @@ if __name__ == "__main__":
                   plot_2=False,
                   plot_3=False,
                   plot_4=False,
-                  plot_5=True)
+                  plot_5=False)
     setup.animate()
     
     for i in range(len(path['actions'])):
