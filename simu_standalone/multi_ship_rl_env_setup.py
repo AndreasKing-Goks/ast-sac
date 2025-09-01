@@ -648,8 +648,10 @@ if test6:
     print('after step route east :', expl_env.obs.auto_pilot.navigate.east)
 
     print('-------------------------------------------------')
+
+# Test the simulation step up using policy's action sampling or direct action manipulation
 test7 = True
-test7 = False
+# test7 = False
 
 if test7:
     
