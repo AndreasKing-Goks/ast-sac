@@ -1,4 +1,4 @@
-# ast-sac
+# maritime-ast
 Repository for **Adaptive Stress Testing** using the **Soft Actor-Critic (SAC)** algorithm in a ship transit simulation environment.
 
 ## Conda Environment Setup
@@ -13,11 +13,11 @@ conda env create -f ast-sac.yml
 
 ---
 
-##  Ship in Transit Simulator
+##  Improved Ship in Transit Simulator
 
 The **ship-in-transit-simulator** is a modular Python-based simulation framework for modeling and running transit scenarios of a marine vessel. It includes ship dynamics, machinery system behaviors, navigation logic, and environmental effects. 
 
-This simulator is developed by Børge Rokseth (**borge.rokseth@ntnu.no**). Original simulator can be found at: https://github.com/BorgeRokseth/ship_in_transit_simulator.git
+This simulator is developed based on Ship in Transit Simulator created by Børge Rokseth (**borge.rokseth@ntnu.no**). Original simulator can be found at: https://github.com/BorgeRokseth/ship_in_transit_simulator.git
 
 
 ### Ship Dynamics
