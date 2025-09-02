@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser(description='Ship Transit Soft Actor-Critic Arg
 ## Add arguments for environments
 parser.add_argument('--max_sampling_frequency', type=int, default=9, metavar='N_SAMPLE',
                     help='ENV: maximum amount of action sampling per episode (default: 9)')
-parser.add_argument('--time_step', type=int, default=4, metavar='TIMESTEP',
+parser.add_argument('--time_step', type=int, default=30, metavar='TIMESTEP',
                     help='ENV: time step size in second for ship transit simulator (default: 2)')
 parser.add_argument('--radius_of_acceptance', type=int, default=300, metavar='ROA',
                     help='ENV: radius of acceptance for LOS algorithm (default: 300)')
@@ -132,7 +132,7 @@ map = PolygonObstacle(map_data)
 ## Set the throttle and autopilot controllers for the test ship
 max_test_ship_thrust = np.inf
 test_ship_thrust_controller_gains = SpeedControllerGains(
-    kp=2.5, ki=150, kd=150
+    kp=150, ki=150, kd=75
 )
 test_ship_thrust_controller = ThrustFromSpeedSetPoint(
     gains=test_ship_thrust_controller_gains,
@@ -140,9 +140,9 @@ test_ship_thrust_controller = ThrustFromSpeedSetPoint(
     time_step=args.time_step
 )
 
-test_route_filename = 'test_ship_route.txt'
+test_route_filename = 'own_ship_route.txt'
 test_route_name = get_data_path(test_route_filename)
-test_heading_controller_gains = HeadingControllerGains(kp=1.65, ki=0.001, kd=50)
+test_heading_controller_gains = HeadingControllerGains(kp=.5, ki=0.01, kd=84)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -165,7 +165,7 @@ test_times = []
 ## Set the throttle and autopilot controllers for the obstacle ship
 max_obs_ship_thrust = np.inf
 obs_ship_thrust_controller_gains = SpeedControllerGains(
-    kp=2.5, ki=150, kd=150
+    kp=.025, ki=700.5, kd=550.5
 )
 obs_ship_thrust_controller = ThrustFromSpeedSetPoint(
     gains=obs_ship_thrust_controller_gains,
@@ -175,7 +175,7 @@ obs_ship_thrust_controller = ThrustFromSpeedSetPoint(
 
 obs_route_filename = 'obs_ship_route.txt'
 obs_route_name = get_data_path(obs_route_filename)
-obs_heading_controller_gains = HeadingControllerGains(kp=1.65, ki=0.001, kd=50)
+obs_heading_controller_gains = HeadingControllerGains(kp=.65, ki=0.001, kd=50)
 obs_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
     lookahead_distance=args.lookahead_distance,
@@ -246,55 +246,55 @@ if test1:
     init_observations = env.reset()                                                    # First reset
     
 
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(-15))
     print('First action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after first step:', env.sampling_count)  
     
 
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(15))
     print('Second action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after second step:', env.sampling_count)
     
 
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(15))
     print('Third action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after third step:', env.sampling_count)
     
 
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(-15))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after fourth step:', env.sampling_count)
     
          
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(-15))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after fifth step:', env.sampling_count)
         
          
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(15))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after sixth step:', env.sampling_count)
 
 
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(15))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after seventh step:', env.sampling_count)
 
         
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(-15))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after eighth step:', env.sampling_count)
 
         
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(-15))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after ninth step:', env.sampling_count)
