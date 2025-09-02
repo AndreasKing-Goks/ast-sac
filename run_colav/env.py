@@ -34,6 +34,779 @@ class ShipAssets:
     stop_flag: bool
     init_copy: 'ShipAssets' = field(default=None, repr=False, compare=False)
 
+class MultiShipNonIWEnv(Env):
+    """
+    This class is the main class for the Ship-Transit Simulator suited for 
+    multi-ship operation. It handles:
+    - One ship under test
+    - One or more obstacle ships
+    
+    To turn on collision avoidance on the ship under test:
+    - set collav=None         : No collision avoidance is implemented
+    - set collav='simple'     : Simple collision avoidance is implemented
+    - set collav='sbmpc'      : SBMPC collision avoidance is implemented
+    """
+    def __init__(self, 
+                 assets:List[ShipAssets],
+                 map: PolygonObstacle,
+                 args):
+        '''
+        Arguments:
+        - assets    : List of all ship assets. 
+                      First entry is always the ship under test
+                      Second entry is/are the obstacle ship(s)
+        - map       : Object map contains the location of land terrain
+                      and its helper functions based on Shapely library
+        - args      : Environmental arguments
+        '''
+        super().__init__()
+        
+        # Store args as attribute
+        self.args = args
+        
+        # Set collision avoidance handle
+        self.collav = args.collav_mode
+        
+        ## Unpack assets [test, obs]
+        self.assets = assets
+        [self.test, self.obs] = self.assets
+        
+        # Store initial values for each assets for reset function
+        for i, asset in enumerate(self.assets):
+            asset.init_copy=copy.deepcopy(asset)
+            
+        # Define observation space
+        # [test_n_pos, test_e_pos, test_los_e_ct \
+        #   obs_n_pos, obs_e_pos, obs_heading, obs_los_e_ct, obs_vel]  (8 states)
+        self.observation_space = Box(
+            low = np.array([0, 0, -3000, 
+                            0, 0, -np.pi, -3000, 0], dtype=np.float32),
+            high = np.array([10000, 20000, 3000,
+                             10000, 20000, np.pi, 3000, 10], dtype=np.float32),
+        )
+        self.obsv_dim = self.observation_space.shape[0]
+        
+        # Define action space [route_point_shift] 
+        self.action_space = Box(
+            low = np.array([-np.pi/6], dtype=np.float32),
+            high = np.array([np.pi/6], dtype=np.float32),
+        )
+        self.action_dim = self.action_space.shape[0]
+        
+        # Define initial state
+        self.initial_states = np.array([self.test.ship_model.north, self.test.ship_model.east, 0.0,
+                                       self.obs.ship_model.north, self.obs.ship_model.east, 
+                                       self.obs.ship_model.yaw_angle, 0.0, self.obs.ship_model.forward_speed], dtype=np.float32)
+        self.states = self.initial_states
+        
+        # Define next state
+        self.next_states = self.initial_states
+        
+        # Store the map class as attribute
+        self.map = map 
+        
+        # Ship drawing configuration
+        self.ship_draw = args.ship_draw
+        self.time_since_last_ship_drawing = args.time_since_last_ship_drawing
+
+        # Scenario-Based Model Predictive Controller
+        self.sbmpc = SBMPC(tf=1000, dt=20)
+        
+        ## INTERMEDIATE WAYPOINT SAMPLER PROPERTIES
+        # Set the intermediate waypoint sampler parameter
+        self.init_get_intermediate_waypoints()
+        
+        # Set up ast-sac results tracker
+        self.results_snapshot()
+        
+        # Set up the waypoint sample and sampling time tracker
+        self.waypoint_samples = []
+        self.waypoint_sampling_times = []
+        
+        ## CONTAINERS FOR ANIMATION
+        self.is_collision_imminent_list = []
+        self.is_collision_list = []
+    
+    def init_get_intermediate_waypoints(self):
+        # Initiate parameter for intermediate waypoint sampler
+        AB_distance_n = self.obs.auto_pilot.navigate.north[-1] - self.obs.auto_pilot.navigate.north[0]
+        AB_distance_e = self.obs.auto_pilot.navigate.east[-1] - self.obs.auto_pilot.navigate.east[0]
+        
+        self.AB_length = np.sqrt(AB_distance_n ** 2 + AB_distance_e ** 2)
+        self.AB_segment_length       = self.AB_length / (self.args.max_sampling_frequency + 1)
+        self.AB_north_segment_length = AB_distance_n / (self.args.max_sampling_frequency + 1)
+        self.AB_east_segment_length  = AB_distance_e / (self.args.max_sampling_frequency + 1) 
+        
+        AB_alpha = np.arctan2(AB_distance_e, AB_distance_n)
+        AB_beta = np.pi/2 - AB_alpha 
+        self.omega = np.pi/2 - AB_beta
+        
+        # Set up recursive variable
+        self.y_s = 0
+        self.x_s = 0
+        self.n_base = self.AB_north_segment_length + self.obs.auto_pilot.navigate.north[0]
+        self.e_base = self.AB_east_segment_length + self.obs.auto_pilot.navigate.east[0]
+        self.sampling_count = 0
+        
+        # Set up the ship travel time and travel distance tracker between each waypoints
+        self.tracker_active = False # Activate tracking only after taking a init_step, deactivate only after reset()
+        self.travel_dist_record= []
+        self.travel_time_record= []
+        self.travel_dist = 0 # Set to 0 after sampling an intermediate waypoint
+        self.travel_time = 0 # Set to 0 after sampling an intermediate waypoint
+    
+    def results_snapshot(self):
+        '''
+            Initialize the ast-sac results snapshot.
+            Useful for step() return values when is_sampling_failure() is True.
+        '''
+        self.next_observations = self.initial_states
+        self.env_info = {
+                        'events'            : '',
+                        'terminal'          : False,
+                        'test_ship_stop'    : False,
+                        'obs_ship_stop'     : False,
+                        }
+    
+    def do_normalize_action(self, a_real):
+        '''
+        Map real action to normalized [-1,1] space
+        '''
+        return 2.0 * (a_real - self.action_space.low) / (self.action_space.high - self.action_space.low) - 1.0
+    
+    def do_denormalize_action(self, a_norm):
+        '''
+        Map normalized [-1,1] to real action space
+        '''
+        return (a_norm + 1.0) / 2.0 * (self.action_space.high - self.action_space.low) + self.action_space.low
+    
+    def get_intermediate_waypoints(self, action):
+        '''
+        Take action as input (scoping angle).
+        Convert the action as the next intermediate waypoints.
+        
+        **ALWAYS takes the unormalized action**
+        '''
+        # Unpack the action and get the scoping angle \Chi (It is a 1D vector)
+        # scoping_angle =  action 
+        scoping_angle = action[0]  # ----> UNIQUE IMPLEMENTATION FOR HAARNOJA ACTION
+        
+        # Compute n_s and e_s
+        # self.omega = (np.pi/2 - self.AB_beta)
+        l_s = np.abs(self.AB_segment_length * np.tan(scoping_angle))
+        self.e_s = l_s * np.cos(self.omega)
+        self.n_s = l_s * np.sin(self.omega)
+        
+        # Compute x_base and y_base
+        # Positive sampling angle turn left
+        if scoping_angle > 0:
+            self.e_s *= -1
+        else:
+            self.n_s *= -1
+        
+        # Compute next route coordinate
+        route_coord_n = self.n_base + self.n_s
+        route_coord_e = self.e_base + self.e_s
+        
+        # Update new base for the next route coordinate
+        self.n_base = route_coord_n + self.AB_north_segment_length
+        self.e_base = route_coord_e + self.AB_east_segment_length
+        
+        # Repack into simulation input
+        intermediate_waypoints = [route_coord_n, route_coord_e]
+        
+        # Track the waypoint sample
+        self.waypoint_samples.append(intermediate_waypoints)
+        
+        return intermediate_waypoints
+    
+    def reset(self,
+              action=None):
+        ''' 
+            Reset all of the ship environment inside the assets container.
+            
+            Immediately call upon init_step() and init_get_intermediate_waypoint() method
+            
+            Return the initial state
+            
+            Note:
+            When the action is not None, it means we immediately sample
+            an intermediate waypoints for the obstacle ship to use
+        '''
+        # Reset the assets
+        for i, ship in enumerate(self.assets):
+            # Call upon the copied initial values
+            init = ship.init_copy
+            
+            #  Reset the ship simulator
+            ship.ship_model.reset()
+            
+            # Reset the ship throttle controller
+            ship.speed_controller.reset() 
+            
+            # Reset the autopilot controlller
+            ship.auto_pilot.reset()
+            
+            # Reset parameters and lists
+            ship.desired_forward_speed = init.desired_forward_speed
+            ship.integrator_term = copy.deepcopy(init.integrator_term)
+            ship.time_list = copy.deepcopy(init.time_list)
+            
+            # Reset the stop flag
+            ship.stop_flag = False
+        
+        # Reset the intermediate waypoint converter
+        self.init_get_intermediate_waypoints()
+        
+        # Set up ast-sac results tracker
+        self.results_snapshot()
+        
+        # Set up the waypoint samples tracker
+        self.waypoint_samples = []
+        
+        # Reset the waypoint sampling time tracker
+        self.waypoint_sampling_times = []
+        
+        # Reset the containers for anmiation
+        self.is_collision_imminent_list = []
+        self.is_collision_list = []
+        
+        # Place the assets in the simulator
+        self.init_step(action)
+        
+        return self.initial_states
+    
+    def init_step(self,
+                  action=None):
+        ''' 
+            The initial step to place the ships at their initial states
+            and to initiate the controller before running the simulator.
+            
+            Note:
+            When the action is not None, it means we immediately sample
+            an intermediate waypoints for the obstacle ship to use
+        '''
+        # For all assets
+        for ship in self.assets:
+            # Measure ship position and speed
+            north_position = ship.ship_model.north
+            east_position = ship.ship_model.east
+            heading = ship.ship_model.yaw_angle
+            forward_speed = ship.ship_model.forward_speed
+        
+            # Find appropriate rudder angle and engine throttle
+            rudder_angle = ship.auto_pilot.rudder_angle_from_sampled_route(
+                north_position=north_position,
+                east_position=east_position,
+                heading=heading
+            )
+        
+            thrust_force = ship.speed_controller.thrust(
+                speed_set_point = ship.desired_forward_speed,
+                measured_speed = forward_speed,
+            )
+            
+            # Store simulation data after init step
+            ship.ship_model.store_simulation_data(thrust_force, 
+                                                  rudder_angle,
+                                                  ship.auto_pilot.get_cross_track_error(),
+                                                  ship.auto_pilot.get_heading_error())
+            
+            # Step
+            ship.ship_model.update_differentials(thrust_force=thrust_force, rudder_angle=rudder_angle)
+            ship.ship_model.integrate_differentials()
+            
+            # Progress time variable to the next time step
+            ship.ship_model.int.next_time()
+                    
+        # Activate travel distance and travel time tracker after placing the assets in the simulator
+        self.tracker_active = True
+        
+    
+    def test_step(self):
+        ''' 
+            The method is used for stepping up the simulator for the ship under test
+        '''  
+        if self.test.stop_flag:
+            # Ship reached endpoint, keep time aligned but don't integrate
+            self.test.ship_model.store_last_simulation_data()
+            self.test.ship_model.int.next_time()  # still progress time
+            
+            # Get observations
+            pos = [self.test.ship_model.north, self.test.ship_model.east, self.test.ship_model.yaw_angle]
+            los_ct_error = self.test.ship_model.simulation_results['cross track error [m]'][-1]
+        
+            # Store integrator term and timestamp
+            self.test.integrator_term.append(self.test.auto_pilot.navigate.e_ct_int)
+            self.test.time_list.append(self.test.ship_model.int.time)
+        
+            # Step up the simulator
+            self.test.ship_model.int.next_time()
+            
+            # Stop the ship
+            # forward_speed = self.test.ship_model.forward_speed
+            forward_speed = 0
+        
+            # Set the next state using the last position of the ship
+            next_states = np.array([self.ensure_scalar(pos[0]),
+                                    self.ensure_scalar(pos[1]), 
+                                    self.ensure_scalar(pos[2]),
+                                    self.ensure_scalar(forward_speed),
+                                    self.ensure_scalar(los_ct_error)],
+                                    dtype=np.float32)
+        
+            return next_states     
+           
+        # Measure ship position and speed
+        north_position = self.test.ship_model.north
+        east_position = self.test.ship_model.east
+        heading = self.test.ship_model.yaw_angle
+        forward_speed = self.test.ship_model.forward_speed
+        
+        # Keep it, even when sbmpc is disabled
+        speed_factor, desired_heading_offset = 1.0, 0.0
+
+        ## COLLISION AVOIDANCE - SBMPC
+        ####################################################################################################
+        if self.collav == 'sbmpc':
+            # Get desired heading and speed for collav
+            self.next_wpt, self.prev_wpt = self.test.auto_pilot.navigate.next_wpt(self.test.auto_pilot.next_wpt, north_position, east_position)
+            chi_d = self.test.auto_pilot.navigate.los_guidance(self.test.auto_pilot.next_wpt, north_position, east_position)
+            u_d = self.test.desired_forward_speed
+
+            # Get OS state required for SBMPC
+            os_state = np.array([self.assets[0].ship_model.east,            # x
+                                 self.assets[0].ship_model.north,           # y
+                                 -self.assets[0].ship_model.yaw_angle,      # Same reference angle but clockwise positive
+                                 self.assets[0].ship_model.forward_speed,   # u
+                                 self.assets[0].ship_model.sideways_speed,  # v
+                                 self.assets[0].ship_model.yaw_rate         # Unused
+                                ])
+            
+            # Get dynamic obstacles info required for SBMPC
+            do_list = [
+                (i, np.array([asset.ship_model.east, asset.ship_model.north, -asset.ship_model.yaw_angle, asset.ship_model.forward_speed, asset.ship_model.sideways_speed]), None, asset.ship_model.ship_config.length_of_ship, asset.ship_model.ship_config.width_of_ship) for i, asset in enumerate(self.assets[1::]) # first asset is own ship
+            ]
+
+            speed_factor, desired_heading_offset = self.sbmpc.get_optimal_ctrl_offset(
+                    u_d=u_d,
+                    chi_d=-chi_d,
+                    os_state=os_state,
+                    do_list=do_list
+                )
+            # Note: self.sbmpc.is_stephen_useful() -> bool can be used to know whether or not the SBMPC colav algorithm is currently active
+        #################################################################################################### 
+
+        # Find appropriate rudder angle and engine throttle
+        rudder_angle = self.test.auto_pilot.rudder_angle_from_sampled_route(
+            north_position=north_position,
+            east_position=east_position,
+            heading=heading,
+            desired_heading_offset=-desired_heading_offset # Negative sign because pos==clockwise in sim
+        )
+
+        thrust_force = self.test.speed_controller.thrust(
+            speed_set_point = self.test.desired_forward_speed * speed_factor,
+            measured_speed = forward_speed,
+        )
+
+        # COLLISION AVOIDANCE - SIMPLE
+        ###################################################################################################
+        if self.collav == 'simple':            
+            collision_risk = check_condition.is_collision_imminent(self.states[0:2], self.states[3:5])
+            
+            if collision_risk:
+                # Reduce thrust
+                thrust_force *= 0.5
+                thrust_force = np.clip(thrust_force, 0.0, 1.1)
+
+                # Add a small rudder bias to steer away (rudder angle in radians)
+                # rudder_angle += np.deg2rad(15) 
+                rudder_angle += np.deg2rad(15) # This triggers SHIP COLLISION
+                rudder_angle = np.clip(rudder_angle, 
+                                       -self.test.auto_pilot.heading_controller.max_rudder_angle, 
+                                        self.test.auto_pilot.heading_controller.max_rudder_angle)
+        ###################################################################################################
+        
+        # Update and integrate differential equations for current time step
+        self.test.ship_model.store_simulation_data(thrust_force, 
+                                                   rudder_angle,
+                                                   self.test.auto_pilot.get_cross_track_error(),
+                                                   self.test.auto_pilot.get_heading_error())
+        self.test.ship_model.update_differentials(thrust_force=thrust_force, rudder_angle=rudder_angle)
+        self.test.ship_model.integrate_differentials()
+        
+        self.test.integrator_term.append(self.test.auto_pilot.navigate.e_ct_int)
+        self.test.time_list.append(self.test.ship_model.int.time)
+        
+        # Step up the simulator
+        self.test.ship_model.int.next_time()
+        
+        # Get observations
+        pos = [self.test.ship_model.north, self.test.ship_model.east, self.test.ship_model.yaw_angle]
+        los_ct_error = self.test.ship_model.simulation_results['cross track error [m]'][-1]
+        
+        # Set the next state, then reset the next_state container to zero
+        next_states = np.array([self.ensure_scalar(pos[0]),
+                                self.ensure_scalar(pos[1]),
+                                self.ensure_scalar(los_ct_error)],
+                               dtype=np.float32)
+        
+        return next_states
+    
+    def obs_step(self):
+        ''' 
+            The method is used for stepping up the simulator for the obstacle ship.
+        '''          
+        if self.obs.stop_flag:
+            # Ship reached endpoint, keep time aligned but don't integrate
+            self.obs.ship_model.store_last_simulation_data()
+            self.obs.ship_model.int.next_time()  # still progress time
+            
+            # Get observations
+            pos = [self.obs.ship_model.north, self.obs.ship_model.east, self.obs.ship_model.yaw_angle]
+            los_ct_error = self.obs.ship_model.simulation_results['cross track error [m]'][-1]
+        
+            # Store integrator term and timestamp
+            self.obs.integrator_term.append(self.obs.auto_pilot.navigate.e_ct_int)
+            self.obs.time_list.append(self.obs.ship_model.int.time)
+        
+            # Step up the simulator
+            self.obs.ship_model.int.next_time()
+            
+            # Stop the ship
+            # forward_speed = self.obs.ship_model.forward_speed
+            forward_speed = 0
+        
+            # Set the next state using the last position of the ship
+            next_states = np.array([self.ensure_scalar(pos[0]),
+                                    self.ensure_scalar(pos[1]), 
+                                    self.ensure_scalar(pos[2]),
+                                    self.ensure_scalar(forward_speed),
+                                    self.ensure_scalar(los_ct_error)],
+                                    dtype=np.float32)
+        
+            return next_states     
+           
+        # Measure ship position and speed
+        north_position = self.obs.ship_model.north
+        east_position = self.obs.ship_model.east
+        heading = self.obs.ship_model.yaw_angle
+        forward_speed = self.obs.ship_model.forward_speed
+        
+        # Keep it, even when sbmpc is disabled
+        speed_factor, desired_heading_offset = 1.0, 0.0
+
+        ## COLLISION AVOIDANCE - SBMPC
+        ####################################################################################################
+        if self.collav == 'sbmpc':
+            # Get desired heading and speed for collav
+            self.next_wpt, self.prev_wpt = self.obs.auto_pilot.navigate.next_wpt(self.obs.auto_pilot.next_wpt, north_position, east_position)
+            chi_d = self.obs.auto_pilot.navigate.los_guidance(self.obs.auto_pilot.next_wpt, north_position, east_position)
+            u_d = self.obs.desired_forward_speed
+
+            # Get OS state required for SBMPC
+            os_state = np.array([self.assets[0].ship_model.east,            # x
+                                 self.assets[0].ship_model.north,           # y
+                                 -self.assets[0].ship_model.yaw_angle,      # Same reference angle but clockwise positive
+                                 self.assets[0].ship_model.forward_speed,   # u
+                                 self.assets[0].ship_model.sideways_speed,  # v
+                                 self.assets[0].ship_model.yaw_rate         # Unused
+                                ])
+            
+            # Get dynamic obstacles info required for SBMPC
+            do_list = [
+                (i, np.array([asset.ship_model.east, asset.ship_model.north, -asset.ship_model.yaw_angle, asset.ship_model.forward_speed, asset.ship_model.sideways_speed]), None, asset.ship_model.ship_config.length_of_ship, asset.ship_model.ship_config.width_of_ship) for i, asset in enumerate(self.assets[1::]) # first asset is own ship
+            ]
+
+            speed_factor, desired_heading_offset = self.sbmpc.get_optimal_ctrl_offset(
+                    u_d=u_d,
+                    chi_d=-chi_d,
+                    os_state=os_state,
+                    do_list=do_list
+                )
+            # Note: self.sbmpc.is_stephen_useful() -> bool can be used to know whether or not the SBMPC colav algorithm is currently active
+        #################################################################################################### 
+
+        # Find appropriate rudder angle and engine throttle
+        rudder_angle = self.obs.auto_pilot.rudder_angle_from_sampled_route(
+            north_position=north_position,
+            east_position=east_position,
+            heading=heading,
+            desired_heading_offset=-desired_heading_offset # Negative sign because pos==clockwise in sim
+        )
+
+        thrust_force = self.obs.speed_controller.thrust(
+            speed_set_point = self.obs.desired_forward_speed * speed_factor,
+            measured_speed = forward_speed,
+        )
+
+        # COLLISION AVOIDANCE - SIMPLE
+        ###################################################################################################
+        if self.collav == 'simple':            
+            collision_risk = check_condition.is_collision_imminent(self.states[0:2], self.states[3:5])
+            
+            if collision_risk:
+                # Reduce thrust
+                thrust_force *= 0.5
+                thrust_force = np.clip(thrust_force, 0.0, 1.1)
+
+                # Add a small rudder bias to steer away (rudder angle in radians)
+                # rudder_angle += np.deg2rad(15) 
+                rudder_angle += np.deg2rad(15) # This triggers SHIP COLLISION
+                rudder_angle = np.clip(rudder_angle, 
+                                       -self.obs.auto_pilot.heading_controller.max_rudder_angle, 
+                                        self.obs.auto_pilot.heading_controller.max_rudder_angle)
+        ###################################################################################################
+        
+        # Update and integrate differential equations for current time step
+        self.obs.ship_model.store_simulation_data(thrust_force, 
+                                                   rudder_angle,
+                                                   self.obs.auto_pilot.get_cross_track_error(),
+                                                   self.obs.auto_pilot.get_heading_error())
+        self.obs.ship_model.update_differentials(thrust_force=thrust_force, rudder_angle=rudder_angle)
+        self.obs.ship_model.integrate_differentials()
+        
+        self.obs.integrator_term.append(self.obs.auto_pilot.navigate.e_ct_int)
+        self.obs.time_list.append(self.obs.ship_model.int.time)
+        
+        # Step up the simulator
+        self.obs.ship_model.int.next_time()
+        
+        # Get observations
+        pos = [self.obs.ship_model.north, self.obs.ship_model.east, self.obs.ship_model.yaw_angle]
+        los_ct_error = self.obs.ship_model.simulation_results['cross track error [m]'][-1]
+        
+        # Set the next state, then reset the next_state container to zero
+        next_states = np.array([self.ensure_scalar(pos[0]),
+                                self.ensure_scalar(pos[1]),
+                                self.ensure_scalar(los_ct_error)],
+                               dtype=np.float32)
+        
+        return next_states
+
+    def obs_ship_uses_scoping_angle(self, scoping_angle):
+        '''
+        Set the obstacle ship to use the scoping angle.
+        
+        Then, return the intermediate waypoints.
+        '''
+        # Update the sampling counter
+        self.sampling_count += 1
+        
+        # Convert action into intermediate waypoints
+        intermediate_waypoints = self.get_intermediate_waypoints(scoping_angle)
+            
+        # Update intermediate waypoint to the LOS guidance controller
+        self.obs.auto_pilot.update_route(intermediate_waypoints)
+
+        # Append the recorded travel time and travel distance to the list
+        self.travel_dist_record.append(self.travel_dist)
+        self.travel_time_record.append(self.travel_time)
+            
+        # Set the travel time and travel distance tracker upon RoA visit. Start recounting again.
+        self.travel_dist = 0
+        self.travel_time = 0
+        
+        return intermediate_waypoints
+    
+    def _step(self):
+        ''' 
+            The method is used for stepping up the simulator for all of the assets
+        '''      
+        # Do test ship step
+        test_next_state = self.test_step()
+        
+        # Do obstacle ship step, get scoping angle as the action
+        obs_next_state = self.obs_step()
+        
+        # Apply ship drawing (set as optional function) after stepping
+        if self.ship_draw:
+            if self.time_since_last_ship_drawing > 30:
+                self.test.ship_model.ship_snap_shot()
+                self.obs.ship_model.ship_snap_shot()
+                self.time_since_last_ship_drawing = 0 # The ship draw timer is reset here
+            self.time_since_last_ship_drawing += self.test.ship_model.int.dt
+            
+        # Gather the necessary state for the SAC
+        next_states = np.array([
+                                test_next_state[0], # test_n_pos
+                                test_next_state[1], # test_e_pos
+                                test_next_state[2], # test_e_ct
+                                obs_next_state[0],  # obs_n_pos
+                                obs_next_state[1],  # obs_e_pos
+                                obs_next_state[2],  # obs_e_ct
+                                ], dtype=np.float32)
+        
+        # Next states
+        self.states = next_states 
+        
+        # Arguments for evaluation function
+        env_args = (self.assets, self.map, self.travel_dist, self.AB_segment_length, self.travel_time)
+        
+        # Get the reward, and the termination flags using the intermediate waypoints
+        env_info = get_env_info(env_args)
+        
+        terminal = env_info['terminal']                                             # Safety violations
+        test_ship_stop = env_info['test_ship_stop'] and (not env_info['terminal'])            # Ship under test stopped, but unharmed
+        obs_ship_stop = env_info['obs_ship_stop'] and (not env_info['terminal'])    # Obstacle ship stopped, but unharmed
+        
+        if test_ship_stop:
+            self.test.stop_flag = True
+        
+        if obs_ship_stop:
+            self.obs.stop_flag = True
+        
+        done = False
+        if self.test.stop_flag and self.obs.stop_flag:
+            done = True
+        
+        combined_done = terminal or done
+        
+        # FOR ANIMATION CONTAINERS
+        test_pos = (self.test.ship_model.north, self.test.ship_model.east)
+        obs_pos = (self.obs.ship_model.north, self.obs.ship_model.east)
+        if self.collav == 'simple':
+            self.is_collision_imminent_list.append(check_condition.is_collision_imminent(test_pos, obs_pos))
+        elif self.collav == 'sbmpc':
+            self.is_collision_imminent_list.append(self.sbmpc.is_stephen_useful())
+            
+        self.is_collision_list.append(check_condition.is_ship_collision(test_pos, obs_pos))
+        
+        return next_states, combined_done, env_info
+    
+    def step(self, 
+             action):
+        ''' The method is used for stepping up the simulator in accordance to the AST-SAC framework
+            
+            Default action is not normalized. 
+            Denormalized the action if the default action mode is normalized
+            
+            No further denormalization is needed.
+            
+            NOTES:
+            - Next state is the state for the simulator
+            - Next observation is the state for the AST-SAC
+            - We ONLY keep the next observation for the AST-SAC purposes
+            - For plotting, we can just access the simulator state list from the assets alone
+        '''
+        # First assumption are simulator is not terminated and 
+        # obstacle ship haven't reached the next radius of acceptance
+        is_reach_roa = False
+        combined_done = False
+        
+        # If the action is not none and need the action is already normalized
+        scoping_angle = action
+        if self.args.normalize_action and action is not None:
+            scoping_angle = self.do_denormalize_action(scoping_angle)
+        
+        # If the action is not none and not normalized anymore
+        # Initially set intermediate waypoints as None
+        intermediate_waypoints = None
+        
+        # Set is_sampling_failure as False initially.
+        # is_sampling_failure is False when within "allow sampling", intermediate waypoints
+        # violate conditions in is_route_inside_obstacles() and is_route_outside_horizon()
+        is_sampling_failure = False
+        
+        # If allowed to sample
+        if self.sampling_count < self.args.max_sampling_frequency:
+            # Set the obstacle ship to use the action and get the intermediate waypoints
+            intermediate_waypoints = self.obs_ship_uses_scoping_angle(scoping_angle)
+            
+            # Then record the time when the obstacle ship sample the scoping angle
+            # Sampling time happened 1 time step before the current time
+            self.waypoint_sampling_times.append(self.obs.ship_model.int.time - self.obs.ship_model.int.dt)
+            
+            # Then we check if the waypoint sampling is correct or not
+            is_sampling_failure = any([check_condition.is_route_inside_obstacles(self.map, intermediate_waypoints),
+                                       check_condition.is_route_outside_horizon(self.map, intermediate_waypoints)])
+            
+            # If sampling failure happened, stop the simulator, then used the snapshots of AST-SAC
+            # results as the output
+            if is_sampling_failure:
+                
+                # Get the snapshots, update the env_info, and set combined_done as True
+                next_observations = self.next_observations
+                
+                combined_done = True
+                env_info = self.env_info
+                env_info['events'] += '|Learning agent samples false intermediate waypoints!|'
+                env_info['terminal'] = True
+                env_info['test_ship_stop'] = False
+                env_info['obs_ship_stop'] = False
+                
+                return next_observations, combined_done, env_info
+            
+        # If reaching RoA, not done, and within simulation time limit do stepping with intermediate waypoints
+        # If not, just step the simulator
+        while (not is_reach_roa and not combined_done):
+            # Step up the simulator
+            next_states, combined_done, env_info = self._step()
+            
+            # Re-checking if the obstacle ship reach the radius of acceptance region
+            north_position = self.obs.ship_model.north
+            east_position = self.obs.ship_model.east
+            obs_pos = [north_position, east_position]
+
+            ## THIS IS REQUIRED HERE
+            # If combined_done break the while loop when the simulator encounters terminal condition.
+            # However the while loop need to be broken as well if is_reach_roa is True.
+            # Because when the ship reach the new RoA, it need to take a new action (intermediate waypoints)
+            # before the next integration process.
+            is_reach_roa = check_condition.is_reach_radius_of_acceptance(self.obs, 
+                                                                         obs_pos,
+                                                                         r_o_a=self.args.radius_of_acceptance)
+            
+            # Check if the simulator has stopped or not
+            if combined_done:
+                # Then, the next states become the next observations, the break the current looping
+                next_observations = next_states
+                
+                # Record the ast-sac results snapshots
+                self.next_observations = next_observations
+                self.env_info = env_info
+                
+                break
+            
+            # If finally reach radius of acceptance,
+            if is_reach_roa and intermediate_waypoints:
+                # Step with intermediate_waypoints
+                next_states, combined_done, env_info = self._step()
+                
+                # Then, the next states become the next observations, the break the current looping
+                next_observations = next_states
+                
+                # SPECIAL CASE
+                # The during the last line segment (sampling_count = max_sampling_count) after
+                # the last waypoint reache
+                if self.sampling_count == self.args.max_sampling_frequency:
+                    # Reset the travel time and travel distance tracker upon RoA visit. Start recounting again.
+                    self.travel_dist = 0
+                    self.travel_time = 0
+                    
+                    while not combined_done:
+                         # Step up the simulator
+                        next_states, combined_done, env_info = self._step()
+
+                        # Then, the next states become the next observations, the break the current looping
+                        next_observations = next_states
+                        
+                # Record the ast-sac results snapshots
+                self.next_observations = next_observations
+                self.env_info = env_info
+                break
+        
+        return next_observations, combined_done, env_info
+    
+    def seed(self, seed=None):
+        """Set the random seed for reproducibility"""
+        self.np_random, seed = seeding.np_random(seed)
+        
+    # Make sure all values are scalars
+    def ensure_scalar(self, x):
+        return float(x[0]) if isinstance(x, (np.ndarray, list)) else float(x)
+
 class MultiShipEnv(Env):
     """
     This class is the main class for the Ship-Transit Simulator suited for 

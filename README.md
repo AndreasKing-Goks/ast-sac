@@ -13,6 +13,41 @@ conda env create -f ast-sac.yml
 
 ---
 
+> ⚠️ **FOR STUDENT!**
+>
+> We have add a very simplified simulator run script for the ship model without complex ship machinery subsystems and reinforcement learning-based waypoint sampler.
+> The ship will be equipped with two controllers:
+> **1. Thrust controller which outputs forward thrust.**
+> **2. Heading controller which outputs rudder angle.**
+>
+> ---
+>
+> **📌 Important Note**  
+> Please work **only within the `run_colav` directory**.  
+> All required subsystems, route data, and the run script are provided there.  
+> Do not use or modify other directories.  
+>
+> For examples on how to use and integrate the simulator, refer to:  
+> `run_colav/run_simplified_model.py` or `run_colav/run_simplified_IW_model.py` for manual *Intermediate Waypoint* generator feature.
+>
+> ---
+>
+> Generally, building this simulator is done by doing these steps:
+> 1. Prepare configurations objects:
+>   - Ship configurations built from `ShipConfiguration()`
+>   - Rudder configurations built from `RudderConfiguration()`
+>   - Simulation environment configuration built from `EnvironmentConfiguration()`
+>   - Simulator configuration built from `SimulationConfiguration()`
+> 2. Using this configuration objects, we can then built a ship asset for stress testing purpose using `SimpleShipModel()`.
+> 3. The ship model needs thrust controller and heading controller for it to carry an autonomous mission. A simple engine throttle controller with fixed desired speed can be set up using `ThrustSpeedSetPoint()`. A heading controller using LOS Guidance can also be set using `HeadingByRouteController()`. For this we need the mission waypoints inside a file named `_ship_route.txt` beforehand.
+> 4. We could also set up a ship model in which it can "choose" a new intermediate waypoint during the simulation. This can be done using `HeadingBySampledRouteController()`. This control is still based on the `HeadingByRouteController()`. It requires the route data: `test_ship_route.txt` for the ship under test and `obs_ship_route.txt` for the obstacle ship prepared beforehand.
+> 5. We can run multiple ship models simultaneously. In order to do that, we know introduce a new term `ShipAssets()`, where it collects the corresponding controllers and other parameters associated to it. Typicially in stress testing settings, we have a ship asset which undergoes a stress testing, namely `test` ship, and a ship asset that acts as a disturbance to affect the ship under test, namely `obs`. All ship assets is collected inside a list, then used to create the RL environment for the adaptive stress testing.
+> 6. Typically, the first entry in the ship asset list are the `test` ship, and the rest is `obs` ship/s. 
+> 
+> Multiple obstacle ships implementation is still on progress!
+
+---
+
 ##  Improved Ship in Transit Simulator
 
 The **ship-in-transit-simulator** is a modular Python-based simulation framework for modeling and running transit scenarios of a marine vessel. It includes ship dynamics, machinery system behaviors, navigation logic, and environmental effects. 
@@ -105,7 +140,7 @@ Two navigation modes:
 
 ## Setting up the Ship in Transit Simulator with RL-learning agent and multi-ship configurations
 
-For usage and integration examples, refer to the provided scripts and documentation in `simu_standalone/multi_ship_rl_env_setup.py`
+For usage and integration examples, refer to the provided scripts and documentation in `multi_ship_rl_env_setup.py`
 
 Generally, building this simulator is done by doing these steps:
 1. Prepare configurations objects:

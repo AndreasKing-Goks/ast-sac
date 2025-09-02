@@ -318,11 +318,11 @@ if test1:
 
     # Plot 1: Overall process plot
     plot_1 = False
-    # plot_1 = True
+    plot_1 = True
 
     # Plot 2: Status plot
     plot_2 = False
-    # plot_2 = True
+    plot_2 = True
     
     # For animation
     animation = False
@@ -366,7 +366,7 @@ if test1:
         ani_dir = os.path.join('animation', 'FOR_STUDENT')
         filename  = "trajectory.mp4"
         video_path = os.path.join(ani_dir, filename)
-        fps = 480
+        fps = 60
         
         # Create the output directory if it doesn't exist
         os.makedirs(ani_dir, exist_ok=True)
@@ -376,7 +376,7 @@ if test1:
 
     # Create a No.2 3x4 grid for subplots
     if plot_2:
-        fig_2, axes = plt.subplots(nrows=3, ncols=4, figsize=(15, 10))
+        fig_2, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 10))
         plt.figure(fig_2.number)  # Ensure it's the current figure
         axes = axes.flatten()  # Flatten the 2D array for easier indexing
     
@@ -434,58 +434,6 @@ if test1:
         axes[5].set_ylabel('Cross track error (m)')
         axes[5].grid(color='0.8', linestyle='-', linewidth=0.5)
         axes[5].set_xlim(left=0)
-
-        # Plot 2.4: Propeller Shaft Speed
-        axes[6].plot(ts_results_df['time [s]'], ts_results_df['propeller shaft speed [rpm]'])
-        axes[6].set_title('Test Ship Propeller Shaft Speed [rpm]')
-        axes[6].set_xlabel('Time (s)')
-        axes[6].set_ylabel('Propeller Shaft Speed (rpm)')
-        axes[6].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[6].set_xlim(left=0)
-
-        # Plot 3.4: Propeller Shaft Speed
-        axes[7].plot(os_results_df['time [s]'], os_results_df['propeller shaft speed [rpm]'])
-        axes[7].set_title('Obstacle Ship Propeller Shaft Speed [rpm]')
-        axes[7].set_xlabel('Time (s)')
-        axes[7].set_ylabel('Propeller Shaft Speed (rpm)')
-        axes[7].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[7].set_xlim(left=0)
-
-        # Plot 2.5: Power vs Available Power
-        axes[8].plot(ts_results_df['time [s]'], ts_results_df['power electrical [kw]'], label="Power")
-        axes[8].plot(ts_results_df['time [s]'], ts_results_df['available power electrical [kw]'], label="Available Power")
-        axes[8].set_title('Test Ship Power vs Available Power [kw]')
-        axes[8].set_xlabel('Time (s)')
-        axes[8].set_ylabel('Power (kw)')
-        axes[8].legend()
-        axes[8].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[8].set_xlim(left=0)
-
-        # Plot 3.5: Power vs Available Power
-        axes[9].plot(os_results_df['time [s]'], os_results_df['power electrical [kw]'], label="Power")
-        axes[9].plot(os_results_df['time [s]'], os_results_df['available power electrical [kw]'], label="Available Power")
-        axes[9].set_title('Obstacle Ship Power vs Available Power [kw]')
-        axes[9].set_xlabel('Time (s)')
-        axes[9].set_ylabel('Power (kw)')
-        axes[9].legend()
-        axes[9].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[9].set_xlim(left=0)
-
-        # Plot 2.6: Fuel Consumption
-        axes[10].plot(ts_results_df['time [s]'], ts_results_df['fuel consumption [kg]'])
-        axes[10].set_title('Test Ship Fuel Consumption [kg]')
-        axes[10].set_xlabel('Time (s)')
-        axes[10].set_ylabel('Fuel Consumption (kg)')
-        axes[10].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[10].set_xlim(left=0)
-
-        # Plot 3.6: Fuel Consumption
-        axes[11].plot(os_results_df['time [s]'], os_results_df['fuel consumption [kg]'])
-        axes[11].set_title('Obstacle Ship Fuel Consumption [kg]')
-        axes[11].set_xlabel('Time (s)')
-        axes[11].set_ylabel('Fuel Consumption (kg)')
-        axes[11].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[11].set_xlim(left=0)
 
         # Adjust layout for better spacing
         plt.tight_layout()

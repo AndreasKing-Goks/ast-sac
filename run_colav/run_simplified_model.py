@@ -1,5 +1,5 @@
 ### IMPORT SIMULATOR ENVIRONMENTS
-from run_colav.env import MultiShipEnv, ShipAssets
+from run_colav.env import MultiShipEnv, MultiShipNonIWEnv, ShipAssets
 
 from run_colav.ship_in_transit.sub_systems.ship_model import  ShipConfiguration, EnvironmentConfiguration, SimulationConfiguration, SimpleShipModel
 from run_colav.ship_in_transit.sub_systems.ship_engine import RudderConfiguration
@@ -173,7 +173,7 @@ obs_ship_thrust_controller = ThrustFromSpeedSetPoint(
     time_step=args.time_step
 )
 
-obs_route_filename = 'obs_ship_route.txt'
+obs_route_filename = 'obs_ship_route_nonIW.txt'
 obs_route_name = get_data_path(obs_route_filename)
 obs_heading_controller_gains = HeadingControllerGains(kp=.65, ki=0.001, kd=50)
 obs_los_guidance_parameters = LosParameters(
@@ -228,7 +228,7 @@ time_since_last_ship_drawing = 30
 ################################### ENV SPACE ###################################
 
 # Initiate Multi-Ship Reinforcement Learning Environment Class Wrapper
-env = MultiShipEnv(assets=assets,
+env = MultiShipNonIWEnv(assets=assets,
                    map=map,
                    args=args)
 
@@ -240,89 +240,24 @@ test1 = True
 # test1 = False
 
 if test1:
- 
-    print('Test and plot step up behaviour')
-    print('sampling count before reset:', env.sampling_count)
-    init_observations = env.reset()                                                    # First reset
     
-
-    action = env.do_normalize_action(np.deg2rad(-15))
-    print('First action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after first step:', env.sampling_count)  
+    # Do the init_step
+    env.init_step()
     
-
-    action = env.do_normalize_action(np.deg2rad(15))
-    print('Second action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after second step:', env.sampling_count)
-    
-
-    action = env.do_normalize_action(np.deg2rad(15))
-    print('Third action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after third step:', env.sampling_count)
-    
-
-    action = env.do_normalize_action(np.deg2rad(-15))
-    print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after fourth step:', env.sampling_count)
-    
-         
-    action = env.do_normalize_action(np.deg2rad(-15))
-    print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after fifth step:', env.sampling_count)
-        
-         
-    action = env.do_normalize_action(np.deg2rad(15))
-    print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after sixth step:', env.sampling_count)
-
-
-    action = env.do_normalize_action(np.deg2rad(15))
-    print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after seventh step:', env.sampling_count)
-
-        
-    action = env.do_normalize_action(np.deg2rad(-15))
-    print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after eighth step:', env.sampling_count)
-
-        
-    action = env.do_normalize_action(np.deg2rad(-15))
-    print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
-    next_observations, combined_done, env_info = env.step(action)  # Step up
-    print('sampling count after ninth step:', env.sampling_count)
+    while test.ship_model.int.time < test.ship_model.int.sim_time:
+        env._step()
 
     # Get the simulation results for all assets
     ts_results_df = pd.DataFrame().from_dict(env.test.ship_model.simulation_results)
     os_results_df = pd.DataFrame().from_dict(env.obs.ship_model.simulation_results)
 
-    # Get the time when the sampling begin, failure modes and the waypoints
-    waypoint_sampling_times = env.waypoint_sampling_times
-    
-    # Print
-    print('')
-    print('---')
-    print('Waypoint sampling time record:', waypoint_sampling_times)
-    print('---')
-    print('after step route north:', env.obs.auto_pilot.navigate.north)
-    print('after step route east :', env.obs.auto_pilot.navigate.east)
-    print('---')
-    print(env_info['events'])
-
     # Plot 1: Overall process plot
     plot_1 = False
-    # plot_1 = True
+    plot_1 = True
 
     # Plot 2: Status plot
     plot_2 = False
-    # plot_2 = True
+    plot_2 = True
     
     # For animation
     animation = False
@@ -366,7 +301,7 @@ if test1:
         ani_dir = os.path.join('animation', 'FOR_STUDENT')
         filename  = "trajectory.mp4"
         video_path = os.path.join(ani_dir, filename)
-        fps = 480
+        fps = 60
         
         # Create the output directory if it doesn't exist
         os.makedirs(ani_dir, exist_ok=True)
@@ -376,7 +311,7 @@ if test1:
 
     # Create a No.2 3x4 grid for subplots
     if plot_2:
-        fig_2, axes = plt.subplots(nrows=3, ncols=4, figsize=(15, 10))
+        fig_2, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 10))
         plt.figure(fig_2.number)  # Ensure it's the current figure
         axes = axes.flatten()  # Flatten the 2D array for easier indexing
     
@@ -434,58 +369,6 @@ if test1:
         axes[5].set_ylabel('Cross track error (m)')
         axes[5].grid(color='0.8', linestyle='-', linewidth=0.5)
         axes[5].set_xlim(left=0)
-
-        # Plot 2.4: Propeller Shaft Speed
-        axes[6].plot(ts_results_df['time [s]'], ts_results_df['propeller shaft speed [rpm]'])
-        axes[6].set_title('Test Ship Propeller Shaft Speed [rpm]')
-        axes[6].set_xlabel('Time (s)')
-        axes[6].set_ylabel('Propeller Shaft Speed (rpm)')
-        axes[6].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[6].set_xlim(left=0)
-
-        # Plot 3.4: Propeller Shaft Speed
-        axes[7].plot(os_results_df['time [s]'], os_results_df['propeller shaft speed [rpm]'])
-        axes[7].set_title('Obstacle Ship Propeller Shaft Speed [rpm]')
-        axes[7].set_xlabel('Time (s)')
-        axes[7].set_ylabel('Propeller Shaft Speed (rpm)')
-        axes[7].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[7].set_xlim(left=0)
-
-        # Plot 2.5: Power vs Available Power
-        axes[8].plot(ts_results_df['time [s]'], ts_results_df['power electrical [kw]'], label="Power")
-        axes[8].plot(ts_results_df['time [s]'], ts_results_df['available power electrical [kw]'], label="Available Power")
-        axes[8].set_title('Test Ship Power vs Available Power [kw]')
-        axes[8].set_xlabel('Time (s)')
-        axes[8].set_ylabel('Power (kw)')
-        axes[8].legend()
-        axes[8].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[8].set_xlim(left=0)
-
-        # Plot 3.5: Power vs Available Power
-        axes[9].plot(os_results_df['time [s]'], os_results_df['power electrical [kw]'], label="Power")
-        axes[9].plot(os_results_df['time [s]'], os_results_df['available power electrical [kw]'], label="Available Power")
-        axes[9].set_title('Obstacle Ship Power vs Available Power [kw]')
-        axes[9].set_xlabel('Time (s)')
-        axes[9].set_ylabel('Power (kw)')
-        axes[9].legend()
-        axes[9].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[9].set_xlim(left=0)
-
-        # Plot 2.6: Fuel Consumption
-        axes[10].plot(ts_results_df['time [s]'], ts_results_df['fuel consumption [kg]'])
-        axes[10].set_title('Test Ship Fuel Consumption [kg]')
-        axes[10].set_xlabel('Time (s)')
-        axes[10].set_ylabel('Fuel Consumption (kg)')
-        axes[10].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[10].set_xlim(left=0)
-
-        # Plot 3.6: Fuel Consumption
-        axes[11].plot(os_results_df['time [s]'], os_results_df['fuel consumption [kg]'])
-        axes[11].set_title('Obstacle Ship Fuel Consumption [kg]')
-        axes[11].set_xlabel('Time (s)')
-        axes[11].set_ylabel('Fuel Consumption (kg)')
-        axes[11].grid(color='0.8', linestyle='-', linewidth=0.5)
-        axes[11].set_xlim(left=0)
 
         # Adjust layout for better spacing
         plt.tight_layout()
