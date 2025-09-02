@@ -327,7 +327,37 @@ class MultiShipEnv(Env):
     def test_step(self):
         ''' 
             The method is used for stepping up the simulator for the ship under test
-        '''          
+        '''  
+        if self.test.stop_flag:
+            # Ship reached endpoint, keep time aligned but don't integrate
+            self.test.ship_model.store_last_simulation_data()
+            self.test.ship_model.int.next_time()  # still progress time
+            
+            # Get observations
+            pos = [self.test.ship_model.north, self.test.ship_model.east, self.test.ship_model.yaw_angle]
+            los_ct_error = self.test.ship_model.simulation_results['cross track error [m]'][-1]
+        
+            # Store integrator term and timestamp
+            self.test.integrator_term.append(self.test.auto_pilot.navigate.e_ct_int)
+            self.test.time_list.append(self.test.ship_model.int.time)
+        
+            # Step up the simulator
+            self.test.ship_model.int.next_time()
+            
+            # Stop the ship
+            # forward_speed = self.test.ship_model.forward_speed
+            forward_speed = 0
+        
+            # Set the next state using the last position of the ship
+            next_states = np.array([self.ensure_scalar(pos[0]),
+                                    self.ensure_scalar(pos[1]), 
+                                    self.ensure_scalar(pos[2]),
+                                    self.ensure_scalar(forward_speed),
+                                    self.ensure_scalar(los_ct_error)],
+                                    dtype=np.float32)
+        
+            return next_states     
+           
         # Measure ship position and speed
         north_position = self.test.ship_model.north
         east_position = self.test.ship_model.east
@@ -388,12 +418,12 @@ class MultiShipEnv(Env):
             
             if collision_risk:
                 # Reduce thrust
-                thrust *= 0.5
-                thrust = np.clip(thrust, 0.0, 1.1)
+                thrust_force *= 0.5
+                thrust_force = np.clip(thrust_force, 0.0, 1.1)
 
                 # Add a small rudder bias to steer away (rudder angle in radians)
                 # rudder_angle += np.deg2rad(15) 
-                rudder_angle += np.deg2rad(-15) # This triggers SHIP COLLISION
+                rudder_angle += np.deg2rad(15) # This triggers SHIP COLLISION
                 rudder_angle = np.clip(rudder_angle, 
                                        -self.test.auto_pilot.heading_controller.max_rudder_angle, 
                                         self.test.auto_pilot.heading_controller.max_rudder_angle)
@@ -446,7 +476,7 @@ class MultiShipEnv(Env):
             self.obs.ship_model.int.next_time()
             
             # Stop the ship
-            forward_speed = self.obs.ship_model.forward_speed
+            # forward_speed = self.obs.ship_model.forward_speed
             forward_speed = 0
         
             # Set the next state using the last position of the ship
@@ -580,11 +610,18 @@ class MultiShipEnv(Env):
         env_info = get_env_info(env_args)
         
         terminal = env_info['terminal']                                             # Safety violations
-        done = env_info['test_ship_stop'] and (not env_info['terminal'])            # Ship under test stopped, but unharmed
+        test_ship_stop = env_info['test_ship_stop'] and (not env_info['terminal'])            # Ship under test stopped, but unharmed
         obs_ship_stop = env_info['obs_ship_stop'] and (not env_info['terminal'])    # Obstacle ship stopped, but unharmed
+        
+        if test_ship_stop:
+            self.test.stop_flag = True
         
         if obs_ship_stop:
             self.obs.stop_flag = True
+        
+        done = False
+        if self.test.stop_flag and self.obs.stop_flag:
+            done = True
         
         combined_done = terminal or done
         
