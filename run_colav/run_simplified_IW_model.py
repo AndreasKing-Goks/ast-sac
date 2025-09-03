@@ -10,7 +10,7 @@ from run_colav.ship_in_transit.utils.print_termination import print_termination
 
 ## IMPORT FUNCTIONS
 from utils.animate import ShipTrajectoryAnimator, RLShipTrajectoryAnimator
-from utils.paths_utils import get_data_path
+from utils.paths_utils import get_data_path_run_colav
 from utils.center_plot import center_plot_window
 
 from test_beds.path_reader import ActionPathReader
@@ -141,7 +141,7 @@ test_ship_thrust_controller = ThrustFromSpeedSetPoint(
 )
 
 test_route_filename = 'own_ship_route.txt'
-test_route_name = get_data_path(test_route_filename)
+test_route_name = get_data_path_run_colav(test_route_filename)
 test_heading_controller_gains = HeadingControllerGains(kp=.5, ki=0.01, kd=84)
 test_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
@@ -174,7 +174,7 @@ obs_ship_thrust_controller = ThrustFromSpeedSetPoint(
 )
 
 obs_route_filename = 'obs_ship_route.txt'
-obs_route_name = get_data_path(obs_route_filename)
+obs_route_name = get_data_path_run_colav(obs_route_filename)
 obs_heading_controller_gains = HeadingControllerGains(kp=.65, ki=0.001, kd=50)
 obs_los_guidance_parameters = LosParameters(
     radius_of_acceptance=args.radius_of_acceptance,
@@ -246,55 +246,55 @@ if test1:
     init_observations = env.reset()                                                    # First reset
     
 
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(-2))
     print('First action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after first step:', env.sampling_count)  
     
 
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Second action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after second step:', env.sampling_count)
     
 
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Third action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after third step:', env.sampling_count)
     
 
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after fourth step:', env.sampling_count)
     
          
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after fifth step:', env.sampling_count)
         
          
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after sixth step:', env.sampling_count)
 
 
-    action = env.do_normalize_action(np.deg2rad(15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after seventh step:', env.sampling_count)
 
         
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after eighth step:', env.sampling_count)
 
         
-    action = env.do_normalize_action(np.deg2rad(-15))
+    action = env.do_normalize_action(np.deg2rad(0))
     print('Fourth action', np.rad2deg(env.do_denormalize_action(action)))
     next_observations, combined_done, env_info = env.step(action)  # Step up
     print('sampling count after ninth step:', env.sampling_count)
